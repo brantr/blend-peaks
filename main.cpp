@@ -99,8 +99,11 @@ int main(int argc, char **argv)
   fscanf(fplist,"%d\n",&nlist);
 
   //begin a loop over the peak catalogue directories
-  for(ilist=0;ilist<nlist;ilist++)
+  //for(ilist=0;ilist<nlist;ilist++)
+  for(ilist=0;ilist<15;ilist++)
   {
+    printf("****************************\n");
+
     fscanf(fplist,"%s\n",fdircat);
     printf("ilist = %d, fdircat = %s\n",ilist,fdircat);
 
@@ -139,6 +142,9 @@ int main(int argc, char **argv)
       blend_peaks(&bs, &bt, s, t);
 
     }
+
+    //print information about the current peak list
+    printf("Running number of blended peaks = %ld.\n",bs.size());
 
     //destroy the shock
     vector<shock>().swap(s);
