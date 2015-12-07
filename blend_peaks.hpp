@@ -7,6 +7,6 @@
 
 using namespace std;
 
-void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<tracer> t);
+void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<tracer> t, double rmax);
 
 #endif //BLEND_PEAKS_H

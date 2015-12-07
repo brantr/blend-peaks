@@ -46,6 +46,7 @@ int main(int argc, char **argv)
 
   long nt;              //total number of tracers in the peak catalogue
 
+  double rmax;          //search radius used to make fof groups
 
   //MPI wallclock timers
   double t_start_all;
@@ -94,6 +95,10 @@ int main(int argc, char **argv)
   isnap = atoi(argv[3]);
   printf("Snapshot number = %d.\n",isnap);
 
+  //make rmax
+  rmax = atof(argv[4]);
+  rmax *= rmax; //euclidean distance is used
+
   //open the list of peak catalogue directories
   fplist = fopen(fnamelist,"r");
   fscanf(fplist,"%d\n",&nlist);
@@ -139,7 +144,7 @@ int main(int argc, char **argv)
 
 
       //OK, now we blend the peaks
-      blend_peaks(&bs, &bt, s, t);
+      blend_peaks(&bs, &bt, s, t, rmax);
 
     }
 

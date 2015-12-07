@@ -1,6 +1,6 @@
 #ifndef SHOCK_DATA_TYPES_H
 #define SHOCK_DATA_TYPES_H
-//#include "kdtree2.hpp"
+#include "kdtree2.hpp"
 #include "spanning_tree_data_types.hpp"
 
 struct shock_sort 
@@ -58,7 +58,7 @@ struct box
 
 // define, for convenience a 2d array of floats. 
 //
-//typedef multi_array<float,2> array2dfloat;
+typedef multi_array<float,2> array2dfloat;
 
 //std::set<long> idc;
 extern std::vector<long> idc;
@@ -66,7 +66,7 @@ extern std::vector<tracer> tv;
 extern std::vector<tracer> td;
 extern tracer tin;
 
-//extern kdtree2*	tree;
-//extern array2dfloat    data;
+extern kdtree2*	tree;
+extern array2dfloat    data;
 
 #endif /*SHOCK_DATA_TYPES_H*/

@@ -394,6 +394,9 @@ void read_shock_data(char fname[], vector<shock> s, vector<tracer> *t)
       (*t)[io].v[2] = vzpeak[k];
       (*t)[io].id   = lpeak[k];
 
+      //record peak index
+      //(*t)[io].peak_index = s[i].id;
+
       io++;
     }
 
