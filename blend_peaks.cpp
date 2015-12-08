@@ -340,7 +340,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 }else{
                   printf("ss %ld tt %ld k %d DIFFERENT tbuf.id %ld bt.id %ld\n",ss,tt,0,tbuf[tt].id,(*bt)[res[0].idx].id);
                 }
-#error for same, check id; otherwise build second tree and then adjust peak_index to assign
+//#error for same, check id; otherwise build second tree and then adjust peak_index to assign
 
                 /*
                 for(long k=0;k<res.size();k++)
