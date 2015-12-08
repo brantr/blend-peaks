@@ -17,7 +17,19 @@ bool tracer_density_and_id_sort(tracer a, tracer b)
     return (a.id<b.id);
   return (a.d>b.d);
 }
-
+bool tracer_position(tracer a, tracer b)
+{
+  if(a.x[0]==b.x[0])
+  {
+    if(a.x[1]==b.x[1])
+    {
+      return(a.x[2]<b.x[2]);
+    }else{
+      return(a.x[1]<b.x[1]);
+    }
+  }
+  return (a.x[0]<b.x[0]);
+}
 
 void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<tracer> t, double rmax)
 {
@@ -39,7 +51,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
   shock  sbuf;            //buffer shocks
   vector<tracer> tbuf;    //buffer tracers
-  vector<tracer> tsearch;    //buffer tracers
+  vector<tracer> tsearch; //buffer tracers
+
+
+  vector<tracer> tunion;    //union of high and low rho threshold peaks
+  vector<tracer> toverlap;  //overlap between high and low rho threshold peaks
+  vector<tracer> tcorr;       //corrected high-density threshold peak
+  vector<tracer> tcorr_lowd;  //corrected low density threshold peak
+  vector<tracer> tcbuf;
 
 
   vector<int> interactions;
@@ -48,6 +67,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   vector<int> n_expand;
 
   vector<tracer>::iterator it;
+  vector<tracer>::iterator ia;
 
   //search tree
   kdtree2 *bs_tree;
@@ -351,8 +371,284 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //here the bounding boxes have just overlapped, and
               //the lower threshold peak does not contain the peak
               //of the higher threshold peak.
-              printf("interaction peak %6ld (id=%10ld) is *NOT* in ss = %10ld (id=%10ld)",i,(*bs)[i].id,ss,s[ss].id);
+              printf("interaction peak %6ld (id=%10ld) is *NOT* in ss = %10ld (id=%10ld)\n",i,(*bs)[i].id,ss,s[ss].id);
+              //exit(-1);
+
+              //OK, what fraction of the lower density peak
+              //overlaps with the higher density peak?
+              long icheck = 0;
+
+              //we can figure this out by doing a unique
+              //comparison
+
+              //add the particles in the dense peak to the 
+              //peak list
+              for(tt=0;tt<(*bs)[i].l;tt++)
+                tunion.push_back((*bt)[(*bs)[i].o+tt]);
+
+              //append tbuf to the end of tsearch
+              it = tunion.end();
+              tunion.insert(it,tbuf.begin(),tbuf.end());
+
+              //sort by id
+              std::sort( tunion.begin(), tunion.end(), tracer_id_sort);
+
+
+              //find the overlap from duplicated entries
+              ia = std::adjacent_find(tunion.begin(), tunion.end(), tracer_unique);
+              if(ia!=tunion.end())
+              {
+                toverlap.push_back(*ia);
+              
+                while(ia!=tunion.end())
+                {
+                  ia = std::adjacent_find(++ia, tunion.end(), tracer_unique);
+                  if(ia!=tunion.end())
+                    toverlap.push_back(*ia);
+                }
+              }
+
+              printf("OVERLAP size is %ld\n",toverlap.size());
+
+              //do a unique comparison on the tracer ids
+              it = std::unique(tunion.begin(), tunion.end(), tracer_unique);
+
+              //resize the union array to contain unique entries
+              tunion.resize( std::distance(tunion.begin(), it) );
+
+              printf("UNION size is %ld\n",tunion.size());
+
+
+              //////////////////////////////
+              //output for checking
+
+              //save the original denser peak
+              vector<tracer> tout;
+              for(tt=(*bs)[i].o;tt<(*bs)[i].o+(*bs)[i].l;tt++)
+                tout.push_back((*bt)[tt]);
+              std::sort( tout.begin(), tout.end(), tracer_position);
+
+              FILE *fpcheck;
+              fpcheck = fopen("test_bsl.txt","w");
+              for(tt=0;tt<tout.size();tt++)
+                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tout[tt].x[0],tout[tt].x[1],tout[tt].x[2],tout[tt].id);
+              fclose(fpcheck);
+              
+
+              // allparticles in low density peak
+              std::sort( tbuf.begin(), tbuf.end(), tracer_position);
+
+              fpcheck = fopen("test_tbuf.txt","w");
+              //fprintf(fpcheck,"%ld\n",tbuf.size());
+              for(tt=0;tt<tbuf.size();tt++)
+                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tbuf[tt].x[0],tbuf[tt].x[1],tbuf[tt].x[2],tbuf[tt].id);;
+              fclose(fpcheck);
+
+              // all particles across both peaks
+              std::sort( tunion.begin(), tunion.end(), tracer_position);
+
+              fpcheck = fopen("test_tunion.txt","w");
+              for(tt=0;tt<tunion.size();tt++)
+                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tunion[tt].x[0],tunion[tt].x[1],tunion[tt].x[2],tunion[tt].id);
+              fclose(fpcheck);
+
+
+              // all particles in in overlap
+
+              std::sort( toverlap.begin(), toverlap.end(), tracer_position);
+              fpcheck = fopen("test_toverlap.txt","w");
+              for(tt=0;tt<toverlap.size();tt++)
+                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",toverlap[tt].x[0],toverlap[tt].x[1],toverlap[tt].x[2],toverlap[tt].id);
+              fclose(fpcheck);
+
+              //END output for checking
+              //////////////////////////////
+
+              //make a corrected list of tracers in the denser
+              //peak that does not contain the overlap
+
+              //to do that, make a list of the dense threshold peak
+              //and the overlap into a buffer called tcbuf
+              for(tt=0;tt<(*bs)[i].l;tt++)
+                tcbuf.push_back((*bt)[(*bs)[i].o+tt]);
+              
+              for(tt=0;tt<toverlap.size();tt++)
+                tcbuf.push_back(toverlap[tt]);
+
+              //sort the ids in this corrected list
+              std::sort( tcbuf.begin(), tcbuf.end(), tracer_id_sort);
+
+              //ok, we move through tcbuf and only add to tcorr those
+              //elements that aren't duplicated
+              tt=0;
+              while(tt<tcbuf.size()-1)
+              {
+                if(tcbuf[tt].id!=tcbuf[tt+1].id)
+                {
+                  tcorr.push_back(tcbuf[tt]);
+                }else{
+                  tt++;
+                }
+                tt++;
+              }
+              if(tcbuf[tcbuf.size()-2].id!=tcbuf[tcbuf.size()-1].id)
+                tcorr.push_back(tcbuf[tcbuf.size()-1]);
+
+              //destroy tcbuf
+              vector<tracer>().swap(tcbuf);
+
+              //repeat for the low density threshold tracer
+              for(tt=0;tt<tbuf.size();tt++)
+                tcbuf.push_back(tbuf[tt]);
+              
+              for(tt=0;tt<toverlap.size();tt++)
+                tcbuf.push_back(toverlap[tt]);
+
+              //sort the ids in this corrected list
+              std::sort( tcbuf.begin(), tcbuf.end(), tracer_id_sort);
+
+              //ok, we move through tcbuf and only add to tcorr those
+              //elements that aren't duplicated
+              tt=0;
+              while(tt<tcbuf.size()-1)
+              {
+                if(tcbuf[tt].id!=tcbuf[tt+1].id)
+                {
+                  tcorr_lowd.push_back(tcbuf[tt]);
+                }else{
+                  tt++;
+                }
+                tt++;
+              }
+              if(tcbuf[tcbuf.size()-2].id!=tcbuf[tcbuf.size()-1].id)
+                tcorr_lowd.push_back(tcbuf[tcbuf.size()-1]);
+
+
+
+
+              /*
+              for(tt=0;tt<tcorr.size();tt++)
+              {
+                printf("TCORR AFTER SORT tt %ld id %ld\n",tt,tcorr[tt].id);
+              }
+
+              fpcheck = fopen("test_tcorr.after_sort.txt","w");
+              //fprintf(fpcheck,"%ld\n",ttest.size());
+              for(tt=0;tt<tcorr.size();tt++)
+                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tcorr[tt].x[0],tcorr[tt].x[1],tcorr[tt].x[2],tcorr[tt].id);
+              fclose(fpcheck);
+
+              //do a unique comparison on the tracer ids
+              //it = std::unique(tcorr.begin(), tcorr.end(), tracer_unique);
+
+              //resize the search array
+              //tcorr.resize( std::distance(tcorr.begin(), it) ); 
+              /*
+              ia = std::adjacent_find(tsearch.begin(), tsearch.end(), tracer_unique);
+              if(ia!=tsearch.end())
+              {
+                ttest.push_back(*ia);
+              
+                while(ia!=tsearch.end())
+                {
+                  ia = std::adjacent_find(++ia, tsearch.end(), tracer_unique);
+                  if(ia!=tsearch.end())
+                    ttest.push_back(*ia);
+                }
+              }
+              */     
+
+              //////////////////////////////////
+              //BEGIN output for checking
+
+              //trick sorting
+              std::sort( tcorr.begin(), tcorr.end(), tracer_position);
+
+              fpcheck = fopen("test_tcorr.txt","w");
+              //fprintf(fpcheck,"%ld\n",ttest.size());
+              for(tt=0;tt<tcorr.size();tt++)
+                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tcorr[tt].x[0],tcorr[tt].x[1],tcorr[tt].x[2],tcorr[tt].id);
+              fclose(fpcheck);
+
+              //END output for checking
+              //////////////////////////////////
+
+
+              //build a search tree for the denser peak
+              peak_tree_data.resize(extents[tcorr.size()][3]);
+
+              //load all particle data into a tree
+              for(tt=0;tt<tcorr.size();tt++)
+                for(int k=0;k<3;k++)
+                  peak_tree_data[tt][k] = tcorr[tt].x[k];
+
+              //build the tree
+              peak_tree = new kdtree2(peak_tree_data, true);
+
+              //here peak_tree contains tcorr as a kdtree
+              //we can search each particle in the overlap
+              //to ensure it really should belong to the
+              //dense peak based on the FOF search radius
+              printf("BEFORE tcorr.size() %ld tcorr_lowd.size() %ld\n",tcorr.size(),tcorr_lowd.size());
+              for(tt=0;tt<toverlap.size();tt++)
+              {
+                //create the query vector
+                for(int k=0;k<3;k++)
+                  xc[k] = toverlap[tt].x[k];
+
+                //find any A particles within bsq
+                peak_tree->r_nearest(xc,rmax,res);
+
+                //if it belongs to the dense peak, then we'll
+                //find a dense particle within the search radius
+                //and if so let's add the particle from the 
+                //overlap to the dense peak
+                if(res.size()>0)
+                {
+                  tcorr.push_back(toverlap[tt]);
+                }else{
+                  //OK, this particle does not belong to the
+                  //dense peak.  Add it back to the low threshold
+                  //peak
+                  tcorr_lowd.push_back(toverlap[tt]);
+                }
+              }
+              printf("AFTER  tcorr.size() %ld tcorr_lowd.size() %ld\n",tcorr.size(),tcorr_lowd.size());
+
+              if(tcorr.size()+tcorr_lowd.size()!=tunion.size())
+              {
+                printf("ERROR LOST PARTICLE  tcorr.size() %ld tcorr_lowd.size() %ld tunion.size() %ld\n",tcorr.size(),tcorr_lowd.size(),tunion.size());
+                fflush(stdout);
+                exit(-1);
+              }
+
               exit(-1);
+
+              //at this point, tcorr contains the corrected high
+              //density threshold peak, adjusted to contain any
+              //particles from the low density peak that may
+              //have triggered the interaction
+
+              //and tcorr_lowd contains the corrected low density
+              //threshold peak, excluding any particles that
+              //should properly belong to the high-density peak
+
+#error   DECIDE HOW TO INCORPORATE THESE INTO CATALOGUES
+
+
+              //destroy the peak tree
+              free(peak_tree);
+              peak_tree_data.resize(extents[0][0]);
+
+              //destroy ttest
+              vector<tracer>().swap(tunion);
+              vector<tracer>().swap(toverlap);
+              vector<tracer>().swap(tunion);
+              vector<tracer>().swap(tcorr);
+              vector<tracer>().swap(tcorr_lowd);
+              vector<tracer>().swap(tcbuf);
+              vector<tracer>().swap(tout);
+
             }
             //destroy tsearch
             vector<tracer>().swap(tsearch);
