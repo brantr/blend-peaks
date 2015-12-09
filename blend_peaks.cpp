@@ -389,7 +389,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             //whether the interactions are merges,
             //or if the bounding boxes have just overlapped
             //needs to be fixed!!!!!!
-            if(it!=tbuf.end())
+            if(it!=tbuf.end()) 
             {
               //the lower threshold peak contains the higher
               //density peak.
@@ -402,12 +402,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 //find any A particles within bsq
                 bs_tree->n_nearest(xc,2,res);
 
+/*
                 if(res[0].dis<1.0e-15)
                 {
                   printf("ss %ld tt %ld k %d SAME tbuf.id %ld bt.id %ld\n",ss,tt,0,tbuf[tt].id,(*bt)[res[0].idx].id);
                 }else{
                   printf("ss %ld tt %ld k %d DIFFERENT tbuf.id %ld bt.id %ld\n",ss,tt,0,tbuf[tt].id,(*bt)[res[0].idx].id);
                 }
+*/
                 //error for same, check id; 
                 //otherwise build second tree and then adjust peak_index to assign
               }
@@ -583,7 +585,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               //resize the search array
               //tcorr.resize( std::distance(tcorr.begin(), it) ); 
-              /*
+              
               ia = std::adjacent_find(tsearch.begin(), tsearch.end(), tracer_unique);
               if(ia!=tsearch.end())
               {
@@ -663,8 +665,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 exit(-1);
               }
 
-              exit(-1);
-
               //at this point, tcorr contains the corrected high
               //density threshold peak, adjusted to contain any
               //particles from the low density peak that may
@@ -678,16 +678,24 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
 
               //we need to replace tbuf with tcorr_lowd
+
+              printf("Replacing tbuf.size() %ld with tcorr_lowd.size() %ld\n",tbuf.size(),tcorr_lowd.size());
+              
               vector<tracer>().swap(tbuf);
-              it = tbuf.end()
-              tbuf.insert(it,tcorr_lowd.begin(),tcorr_low.end());  
+              it = tbuf.end();
+              tbuf.insert(it,tcorr_lowd.begin(),tcorr_lowd.end());  
               std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
 
               //reset buffer information
-              sbuf.l = tbuf.size()
+              sbuf.l = tbuf.size();
               sbuf.o = 0;
               sbuf.d = tbuf[0].d;
               sbuf.id = tbuf[0].id;
+              set_peak_box(&sbuf, tbuf);
+
+
+              printf("Revised tbuf.size() %ld\n",tbuf.size());
+
 
 
               //destroy the peak tree
@@ -703,6 +711,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               vector<tracer>().swap(tcbuf);
               //vector<tracer>().swap(tout);
 
+            exit(-1);
             }
 
 
@@ -715,6 +724,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           //what ever is left in tbuf after
           //going through all the interactions 
           //is new, and gets added to tappend/sappend
+          
+          /*
           if(tbuf.size()>0)
           {
             //sort tracers by density, then id
@@ -738,11 +749,13 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             for(tt=0;tt<s[ss].l;tt++)
               tappend.push_back(tbuf[tt]);
           }
+          */
                     
           //destroy tbuf
           vector<tracer>().swap(tbuf);
 
         }//end interactions > 1
+
 
       }//end interactions>0
 
