@@ -211,7 +211,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       printf("Shock = %ld (l=%ld), number of interactions = %ld\n",ss,s[ss].l,interactions.size());
 
       //if there are no interactions, this is a new peak
-      //this is the easiest case
+      //this is the easiest case, add shock to sappend
+      //and add tracers to tappend
       if(interactions.size() ==0)
       {
         printf("Appending shock %ld.\n",ss);
@@ -361,6 +362,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           //sort by density, then id
           std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
 
+          //create the new, blended shock
+          sbuf.l  = tbuf.size();
+          sbuf.o  = 0;
+          sbuf.d  = tbuf[0].d;
+          sbuf.id = tbuf[0].id;
+
           //reset group id
           s[ss].id = tbuf[0].id;
 
@@ -403,11 +410,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 }
                 //error for same, check id; 
                 //otherwise build second tree and then adjust peak_index to assign
-
-                /*
-                for(long k=0;k<res.size();k++)
-                  printf("ss %ld tt %ld k %ld res.dis() %e\n",ss,tt,k,res[k].dis);
-                */
               }
             }else{
               //here the bounding boxes have just overlapped, and
@@ -543,8 +545,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //sort the ids in this corrected list
               std::sort( tcbuf.begin(), tcbuf.end(), tracer_id_sort);
 
-              //ok, we move through tcbuf and only add to tcorr those
+              //ok, we move through tcbuf and only add to tcorr_lowd those
               //elements that aren't duplicated
+              keep_unique(tcbuf, &tcorr_lowd);
+
+/*
               tt=0;
               while(tt<tcbuf.size()-1)
               {
@@ -558,11 +563,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               }
               if(tcbuf[tcbuf.size()-2].id!=tcbuf[tcbuf.size()-1].id)
                 tcorr_lowd.push_back(tcbuf[tcbuf.size()-1]);
+*/
 
 
-
-
-              /*
+/*
               for(tt=0;tt<tcorr.size();tt++)
               {
                 printf("TCORR AFTER SORT tt %ld id %ld\n",tt,tcorr[tt].id);
@@ -592,7 +596,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                     ttest.push_back(*ia);
                 }
               }
-              */     
+*/     
 
 /*
               //////////////////////////////////
@@ -673,6 +677,19 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 //#error   DECIDE HOW TO INCORPORATE THESE INTO CATALOGUES
 
 
+              //we need to replace tbuf with tcorr_lowd
+              vector<tracer>().swap(tbuf);
+              it = tbuf.end()
+              tbuf.insert(it,tcorr_lowd.begin(),tcorr_low.end());  
+              std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
+
+              //reset buffer information
+              sbuf.l = tbuf.size()
+              sbuf.o = 0;
+              sbuf.d = tbuf[0].d;
+              sbuf.id = tbuf[0].id;
+
+
               //destroy the peak tree
               free(peak_tree);
               peak_tree_data.resize(extents[0][0]);
@@ -687,29 +704,40 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //vector<tracer>().swap(tout);
 
             }
+
+
+
             //destroy tsearch
             vector<tracer>().swap(tsearch);
-          }
 
-          /*
-          for(tt=0;tt<s[ss].l;tt++)
+          }//end loop over interactions
+
+          //what ever is left in tbuf after
+          //going through all the interactions 
+          //is new, and gets added to tappend/sappend
+          if(tbuf.size()>0)
           {
-            printf("tracer test tt %ld d %e id %ld\n",tt,tbuf[tt].d,tbuf[tt].id);
+            //sort tracers by density, then id
+            std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
+
+            //set peak index
+            for(tt=0;tt<tbuf.size();tt++)
+              tbuf[tt].peak_index = tbuf[0].id;
+
+            //reset shock properties
+            sbuf.l = tbuf.size();
+            sbuf.o = 0;
+            sbuf.d = tbuf[0].d;
+            sbuf.id = tbuf[0].id;
+
+            //set the peak box
+            set_peak_box(&sbuf, tbuf);
+
+            //append shock and tracers to the append lists
+            sappend.push_back(sbuf);
+            for(tt=0;tt<s[ss].l;tt++)
+              tappend.push_back(tbuf[tt]);
           }
-          printf("XXXX tbuf[0].id %ld s.id %ld\n",tbuf[0].id,s[ss].id);
-          */
-
-          //it = std::find(tbuf.begin(), tbuf.end(), tracer_unique);
-          /*for(tt=0;tt<s[ss].l;tt++)
-          {
-            if(tbuf[tt].id==s[ss].id)
-            {
-              printf("it's here.\n");
-              break;
-            }
-          }*/
-
-
                     
           //destroy tbuf
           vector<tracer>().swap(tbuf);
