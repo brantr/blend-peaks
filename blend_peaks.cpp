@@ -193,7 +193,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   printf("Blending peaks (bs %ld s %ld)..\n",bs->size(),s.size());
 
   //if this is our first set of nonzero peaks
-  //then add them to the peak list
+  //then add them to the blended peak list
   if(bs->size()==0)
   {
   	printf("Empty blended peak list.\n");
@@ -243,18 +243,25 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     //this is our main work loop
     //and bs->size()>0
 
-    //save the shock list for comparison
+    //save the blended shock list for comparison
     for(ss=0;ss<bs->size();ss++)
       scomp.push_back((*bs)[ss]);
 
-    //begin loop over peaks
+    //begin loop over peaks found at this density threshold
     for(ss=0;ss<s.size();ss++)
       printf("s[%4ld].l %6ld id %10ld\n",ss,s[ss].l,s[ss].id);
 
-//    for(ss=0;ss<s.size();ss++)
-    //nslim = 2;
-    //if(s.size()<nslim)
-      nslim = s.size();
+
+    //Begin loop over all shocks
+    //found in the shock list from the
+    //current density threshold
+
+    //we have to decide what to do with
+    //them based on whether they contain
+    //peaks already identified at higher
+    //density thresholds or not.
+
+    nslim = s.size();
     for(ss=0;ss<nslim;ss++)
     {
 
@@ -607,17 +614,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
                   //once found, fix the peak_index
                   (*it).peak_index = tgap[tt].peak_index;
-                  //printf("tgapid %ld itid %ld tgappid %ld itpid %ld\n",tgap[tt].id,(*it).id,tgap[tt].peak_index,(*it).peak_index);
                 }
 
                 //resort tbuf
                 std::sort(tbuf.begin(),tbuf.end(),tracer_pid_and_density_and_id_sort);
-//#error at 140, we get duplicates with this
 
-                //we can append these 
+                //we can append these shocks to 
+                //the running list of blended shocks
 
                 long pid = tbuf[0].peak_index;
-                printf("Current pid %ld\n",pid);
                 for(tt=0;tt<tbuf.size();tt++)
                 {
                   tstore.push_back(tbuf[tt]);
@@ -637,14 +642,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                     }
 
                     //add sbuf to sappend
-                    if(sbuf.id==238790)
-                      printf("ADDING A\n");
                     sappend.push_back(sbuf);
 
                     //clear tstore
                     vector<tracer>().swap(tstore);                    
 
                   }else if(tbuf[tt+1].peak_index!=pid){
+
+                    //store this shock
+
                     sbuf.l  = tstore.size();
                     sbuf.o  = 0;
                     sbuf.d  = tstore[0].d;
@@ -656,8 +662,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                     {
                       tappend.push_back(tstore[si]);
                     }
-                    if(sbuf.id==238790)
-                      printf("ADDING B\n");
+
                     //add sbuf to sappend
                     sappend.push_back(sbuf);
 
@@ -679,43 +684,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 flag_gap_tree = 0;
               }
 
-              //The first interaction of multiple has to be with the
-              //densest subpeak. So we can pare back tbuf to contain only the
-              //densest subpeak, and then do a simple append to the end
-              /*
-              char fnamec[200];
-              sprintf(fnamec,"test_tbuf_2.txt");
-              fpc = fopen(fnamec,"w");
-              for(tt=0;tt<tbuf.size();tt++)
-                fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\t%ld\n",tbuf[tt].x[0],tbuf[tt].x[1],tbuf[tt].x[2],tbuf[tt].d,tbuf[tt].id,tbuf[tt].peak_index);
-              fclose(fpc);
-              */
-/*
-              char fnamec[200];
-              sprintf(fnamec,"test_gap_A.txt");
-              fpc = fopen(fnamec,"w");
-              for(tt=0;tt<tgap.size();tt++)
-                if(tgap[tt].peak_index==tgap[0].peak_index)
-                  fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\n",tgap[tt].x[0],tgap[tt].x[1],tgap[tt].x[2],tgap[tt].d,tgap[tt].id);;
-              fclose(fpc);
-
-              sprintf(fnamec,"test_gap_B.txt");
-              fpc = fopen(fnamec,"w");
-              for(tt=0;tt<tgap.size();tt++)
-                if(tgap[tt].peak_index!=tgap[0].peak_index)
-                  fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\n",tgap[tt].x[0],tgap[tt].x[1],tgap[tt].x[2],tgap[tt].d,tgap[tt].id);;
-              fclose(fpc);
-
-              sprintf(fnamec,"test_%ld.txt",i);
-              fpc = fopen(fnamec,"w");
-              for(tt=(*bs)[i].o;tt<(*bs)[i].o+(*bs)[i].l;tt++)
-                fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\n",(*bt)[tt].x[0],(*bt)[tt].x[1],(*bt)[tt].x[2],(*bt)[tt].d,(*bt)[tt].id);;
-              fclose(fpc);
-*/
-              //exit(-1);
-              //how do we avoid repeating?
+              //Done!
 
             }else if(it==tbuf.end()){
+
+              //THIS MAY NEVER EXECUTE
 
               //here the bounding boxes have just overlapped, and
               //the lower threshold peak does not contain the peak
@@ -757,54 +730,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               printf("UNION size is %ld\n",tunion.size());
 
-
-/*
-              //////////////////////////////
-              //output for checking
-
-              //save the original denser peak
-              vector<tracer> tout;
-              for(tt=(*bs)[i].o;tt<(*bs)[i].o+(*bs)[i].l;tt++)
-                tout.push_back((*bt)[tt]);
-              std::sort( tout.begin(), tout.end(), tracer_position);
-
-              FILE *fpcheck;
-              fpcheck = fopen("test_bsl.txt","w");
-              for(tt=0;tt<tout.size();tt++)
-                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tout[tt].x[0],tout[tt].x[1],tout[tt].x[2],tout[tt].id);
-              fclose(fpcheck);
-              
-
-              // allparticles in low density peak
-              std::sort( tbuf.begin(), tbuf.end(), tracer_position);
-
-              fpcheck = fopen("test_tbuf.txt","w");
-              //fprintf(fpcheck,"%ld\n",tbuf.size());
-              for(tt=0;tt<tbuf.size();tt++)
-                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tbuf[tt].x[0],tbuf[tt].x[1],tbuf[tt].x[2],tbuf[tt].id);;
-              fclose(fpcheck);
-
-              // all particles across both peaks
-              std::sort( tunion.begin(), tunion.end(), tracer_position);
-
-              fpcheck = fopen("test_tunion.txt","w");
-              for(tt=0;tt<tunion.size();tt++)
-                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tunion[tt].x[0],tunion[tt].x[1],tunion[tt].x[2],tunion[tt].id);
-              fclose(fpcheck);
-
-
-              // all particles in in overlap
-
-              std::sort( toverlap.begin(), toverlap.end(), tracer_position);
-              fpcheck = fopen("test_toverlap.txt","w");
-              for(tt=0;tt<toverlap.size();tt++)
-                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",toverlap[tt].x[0],toverlap[tt].x[1],toverlap[tt].x[2],toverlap[tt].id);
-              fclose(fpcheck);
-
-              //END output for checking
-              //////////////////////////////
-*/
-
               //make a corrected list of tracers in the denser
               //peak that does not contain the overlap
 
@@ -822,21 +747,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //ok, we move through tcbuf and only add to tcorr those
               //elements that aren't duplicated
               keep_unique(tcbuf, &tcorr);
-/*
-              tt=0;
-              while(tt<tcbuf.size()-1)
-              {
-                if(tcbuf[tt].id!=tcbuf[tt+1].id)
-                {
-                  tcorr.push_back(tcbuf[tt]);
-                }else{
-                  tt++;
-                }
-                tt++;
-              }
-              if(tcbuf[tcbuf.size()-2].id!=tcbuf[tcbuf.size()-1].id)
-                tcorr.push_back(tcbuf[tcbuf.size()-1]);
-*/
+
               //destroy tcbuf
               vector<tracer>().swap(tcbuf);
 
@@ -854,71 +765,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //elements that aren't duplicated
               keep_unique(tcbuf, &tcorr_lowd);
 
-/*
-              tt=0;
-              while(tt<tcbuf.size()-1)
-              {
-                if(tcbuf[tt].id!=tcbuf[tt+1].id)
-                {
-                  tcorr_lowd.push_back(tcbuf[tt]);
-                }else{
-                  tt++;
-                }
-                tt++;
-              }
-              if(tcbuf[tcbuf.size()-2].id!=tcbuf[tcbuf.size()-1].id)
-                tcorr_lowd.push_back(tcbuf[tcbuf.size()-1]);
-*/
-
-
-/*
-              for(tt=0;tt<tcorr.size();tt++)
-              {
-                printf("TCORR AFTER SORT tt %ld id %ld\n",tt,tcorr[tt].id);
-              }
-
-              fpcheck = fopen("test_tcorr.after_sort.txt","w");
-              //fprintf(fpcheck,"%ld\n",ttest.size());
-              for(tt=0;tt<tcorr.size();tt++)
-                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tcorr[tt].x[0],tcorr[tt].x[1],tcorr[tt].x[2],tcorr[tt].id);
-              fclose(fpcheck);
-
-              //do a unique comparison on the tracer ids
-              //it = std::unique(tcorr.begin(), tcorr.end(), tracer_unique);
-
-              //resize the search array
-              //tcorr.resize( std::distance(tcorr.begin(), it) ); 
-              
-              ia = std::adjacent_find(tsearch.begin(), tsearch.end(), tracer_unique);
-              if(ia!=tsearch.end())
-              {
-                ttest.push_back(*ia);
-              
-                while(ia!=tsearch.end())
-                {
-                  ia = std::adjacent_find(++ia, tsearch.end(), tracer_unique);
-                  if(ia!=tsearch.end())
-                    ttest.push_back(*ia);
-                }
-              }
-*/     
-
-/*
-              //////////////////////////////////
-              //BEGIN output for checking
-
-              //trick sorting
-              std::sort( tcorr.begin(), tcorr.end(), tracer_position);
-
-              fpcheck = fopen("test_tcorr.txt","w");
-              //fprintf(fpcheck,"%ld\n",ttest.size());
-              for(tt=0;tt<tcorr.size();tt++)
-                fprintf(fpcheck,"%e\t%e\t%e\t%ld\n",tcorr[tt].x[0],tcorr[tt].x[1],tcorr[tt].x[2],tcorr[tt].id);
-              fclose(fpcheck);
-
-              //END output for checking
-              //////////////////////////////////
-*/
 
               //build a search tree for the denser peak
               peak_tree_data.resize(extents[tcorr.size()][3]);
@@ -978,7 +824,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //threshold peak, excluding any particles that
               //should properly belong to the high-density peak
 
-//#error   DECIDE HOW TO INCORPORATE THESE INTO CATALOGUES
               //MIGHT BE BACKWARD (replace tbuf with tcorr instead)?
 
 
@@ -1001,8 +846,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               printf("Revised tbuf.size() %ld\n",tbuf.size());
 
-
-
               //destroy the peak tree
               free(peak_tree);
               peak_tree_data.resize(extents[0][0]);
@@ -1016,18 +859,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               vector<tracer>().swap(tcbuf);
               //vector<tracer>().swap(tout);
 
+              //let's see if this is ever encountered.
               exit(-1);
             }
-
-
 
             //destroy tsearch
             vector<tracer>().swap(tsearch);
 
           }//end loop over interactions
-
-          //if(interactions.size()>1)
-            //exit(-1);
 
           //what ever is left in tbuf after
           //going through all the interactions 
@@ -1051,9 +890,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
             //set the peak box
             set_peak_box(&sbuf, tbuf);
-
-            if(sbuf.id==238790)
-              printf("ADDING C\n");
 
             //append shock and tracers to the append lists
             sappend.push_back(sbuf);
@@ -1127,16 +963,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   vector<shock>().swap(sappend);
   vector<shock>().swap(sstore);
 
-/*
-  printf("********** PREVIOUS Shock List\n");
-  for(ss=0;ss<scomp.size();ss++)
-  {
-    sbuf = scomp[ss];
-    printf("ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id);
-  }
-  printf("********** END PREVOUS Shock List\n");
-  //destroy shock comparison list
-  vector<shock>().swap(scomp);*/
+
+  //print information about the shocks.
 
   shock sbufB;
   printf("********** Blended Shock List\n");
