@@ -187,7 +187,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //tree was built
   int flag_tree_build = 0;
 
-  int flag_multi = 0;
+  int flag_multi = 0; //a shock had multiple interactions
+
+  int flag_box_fail = 0;  //a shock had multi interactions because boxes, not tracers, overlapped
 
 
   printf("Blending peaks (bs %ld s %ld)..\n",bs->size(),s.size());
@@ -444,11 +446,13 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           //reset group id
           //s[ss].id = tbuf[0].id;
 
+          /*
           FILE *fpc;
           fpc = fopen("test_tbuf.txt","w");
           for(tt=0;tt<sbuf.l;tt++)
             fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\n",tbuf[tt].x[0],tbuf[tt].x[1],tbuf[tt].x[2],tbuf[tt].d,tbuf[tt].id);;
           fclose(fpc);
+          */
 
           //begin a loop over all the interactions
           for(long ti=0;ti<interactions.size();ti++)
@@ -467,9 +471,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             //Here, we need to consider separately
             //whether the interactions are merges,
             //or if the bounding boxes have just overlapped
-            //needs to be fixed!!!!!!
             if((it!=tbuf.end()) && !flag_multi)
-            //if((it!=tbuf.end()))
             {
               //remember that we've done this multiple interaction
               flag_multi = 1;
@@ -688,13 +690,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
             }else if(it==tbuf.end()){
 
-              //THIS MAY NEVER EXECUTE
-
               //here the bounding boxes have just overlapped, and
               //the lower threshold peak does not contain the peak
               //of the higher threshold peak.
               printf("LDT DOESN'T CONTAIN HDT int peak %6ld (id=%10ld) is *NOT* in ss = %10ld (id=%10ld)\n",i,(*bs)[i].id,ss,s[ss].id);
-              //exit(-1);
 
               //OK, what fraction of the lower density peak
               //overlaps with the higher density peak?
@@ -860,7 +859,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //vector<tracer>().swap(tout);
 
               //let's see if this is ever encountered.
-              exit(-1);
+              //exit(-1);
+              flag_box_fail = 1;
             }
 
             //destroy tsearch
@@ -991,4 +991,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     bs_data.resize(extents[0][0]);
     free(bs_tree);
   }
+
+  //for debugging
+  //seems ok
+  //if(flag_box_fail)
+    //exit(-1);
 }

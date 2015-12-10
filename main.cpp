@@ -104,8 +104,7 @@ int main(int argc, char **argv)
   fscanf(fplist,"%d\n",&nlist);
 
   //begin a loop over the peak catalogue directories
-  //for(ilist=0;ilist<nlist;ilist++)
-  for(ilist=0;ilist<15;ilist++)
+  for(ilist=0;ilist<nlist;ilist++)
   {
     printf("****************************\n");
 
