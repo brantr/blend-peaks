@@ -150,6 +150,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   vector<tracer> tcorr_lowd;  //corrected low density threshold peak
   vector<tracer> tcbuf;
 
+  vector<shock>  scomp;       //compare blended shocks before and after
+
 
   vector<int> interactions;
   vector<int> n_append;
@@ -240,6 +242,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
     //this is our main work loop
     //and bs->size()>0
+
+    //save the shock list for comparison
+    for(ss=0;ss<bs->size();ss++)
+      scomp.push_back((*bs)[ss]);
 
     //begin loop over peaks
     for(ss=0;ss<s.size();ss++)
@@ -365,11 +371,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         }//end interactions==1
 
 
+        //if a shock has more than one interaction
+        //enter this conditional. If this is turned off,
+        //shocks with multiple interactions will not 
+        //remain
         if(interactions.size()>1)
         {
           //we have more than one peak merging
           //together
-//#error Add > 1 interactions
           printf("ss %ld ninteractions %ld\n",ss,interactions.size());
 
           for(long ti=0;ti<interactions.size();ti++)
@@ -426,7 +435,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           sbuf.id = tbuf[0].id;
 
           //reset group id
-          s[ss].id = tbuf[0].id;
+          //s[ss].id = tbuf[0].id;
 
           FILE *fpc;
           fpc = fopen("test_tbuf.txt","w");
@@ -452,8 +461,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             //whether the interactions are merges,
             //or if the bounding boxes have just overlapped
             //needs to be fixed!!!!!!
-            //if((it!=tbuf.end()) && !flag_multi)
-            if((it!=tbuf.end()))
+            if((it!=tbuf.end()) && !flag_multi)
+            //if((it!=tbuf.end()))
             {
               //remember that we've done this multiple interaction
               flag_multi = 1;
@@ -603,10 +612,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
                 //resort tbuf
                 std::sort(tbuf.begin(),tbuf.end(),tracer_pid_and_density_and_id_sort);
-#error at 140, we get duplicates with this
+//#error at 140, we get duplicates with this
 
                 //we can append these 
+
                 long pid = tbuf[0].peak_index;
+                printf("Current pid %ld\n",pid);
                 for(tt=0;tt<tbuf.size();tt++)
                 {
                   tstore.push_back(tbuf[tt]);
@@ -626,6 +637,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                     }
 
                     //add sbuf to sappend
+                    if(sbuf.id==238790)
+                      printf("ADDING A\n");
                     sappend.push_back(sbuf);
 
                     //clear tstore
@@ -643,12 +656,16 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                     {
                       tappend.push_back(tstore[si]);
                     }
-
+                    if(sbuf.id==238790)
+                      printf("ADDING B\n");
                     //add sbuf to sappend
                     sappend.push_back(sbuf);
 
                     //clear tstore
                     vector<tracer>().swap(tstore);
+
+                    //update pid
+                    pid = tbuf[tt+1].peak_index;
                   }
                 }
 
@@ -665,12 +682,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //The first interaction of multiple has to be with the
               //densest subpeak. So we can pare back tbuf to contain only the
               //densest subpeak, and then do a simple append to the end
+              /*
               char fnamec[200];
               sprintf(fnamec,"test_tbuf_2.txt");
               fpc = fopen(fnamec,"w");
               for(tt=0;tt<tbuf.size();tt++)
                 fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\t%ld\n",tbuf[tt].x[0],tbuf[tt].x[1],tbuf[tt].x[2],tbuf[tt].d,tbuf[tt].id,tbuf[tt].peak_index);
               fclose(fpc);
+              */
 /*
               char fnamec[200];
               sprintf(fnamec,"test_gap_A.txt");
@@ -1015,7 +1034,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           //is new, and gets added to tappend/sappend
           
           
-          if(tbuf.size()>0)
+          if(tbuf.size()>0 && !flag_multi)
           {
             //sort tracers by density, then id
             std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
@@ -1032,6 +1051,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
             //set the peak box
             set_peak_box(&sbuf, tbuf);
+
+            if(sbuf.id==238790)
+              printf("ADDING C\n");
 
             //append shock and tracers to the append lists
             sappend.push_back(sbuf);
@@ -1105,13 +1127,34 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   vector<shock>().swap(sappend);
   vector<shock>().swap(sstore);
 
+/*
+  printf("********** PREVIOUS Shock List\n");
+  for(ss=0;ss<scomp.size();ss++)
+  {
+    sbuf = scomp[ss];
+    printf("ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+  }
+  printf("********** END PREVOUS Shock List\n");
+  //destroy shock comparison list
+  vector<shock>().swap(scomp);*/
+
+  shock sbufB;
   printf("********** Blended Shock List\n");
   for(ss=0;ss<(*bs).size();ss++)
   {
     sbuf = (*bs)[ss];
-    printf("ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+    if(ss<scomp.size())
+    {
+      sbufB = scomp[ss];
+      printf("ss %6ld l %6ld o %6ld d %e id %ld\t\tPREV ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id,ss,sbufB.l,sbufB.o,sbufB.d,sbufB.id);
+    }else{
+      printf("ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+    }
   }
   printf("********** END Blended Shock List\n");
+
+  //destroy shock comparison list
+  vector<shock>().swap(scomp);
 
   //if necessary, free memory
   //associated with tree
