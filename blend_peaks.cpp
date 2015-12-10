@@ -3,6 +3,27 @@
 #include "blend_peaks.hpp"
 #include "box_collision.hpp"
 
+struct edgeg
+{
+  long tt;
+  long idxA;
+  float disA;
+  long idxg;
+  float disg;
+  long pid;
+};
+bool edgeg_pid_sort(edgeg a, edgeg b)
+{
+  return (a.pid<b.pid);
+}
+bool edgeg_disA_sort(edgeg a, edgeg b)
+{
+  return (a.disA<b.disA);
+}
+bool edgeg_disg_sort(edgeg a, edgeg b)
+{
+  return (a.disg<b.disg);
+}
 bool tracer_unique(tracer a, tracer b)
 {
   return (a.id==b.id);
@@ -10,6 +31,20 @@ bool tracer_unique(tracer a, tracer b)
 bool tracer_id_sort(tracer a, tracer b)
 {
   return (a.id<b.id);
+}
+bool shock_density_sort(shock a, shock b)
+{
+  return (a.d>b.d);
+}
+bool tracer_pid_and_density_and_id_sort(tracer a, tracer b)
+{
+  if(a.peak_index==b.peak_index)
+  {
+    if(a.d==b.d)
+      return (a.id<b.id);
+    return (a.d>b.d);
+  }
+  return (a.peak_index<b.peak_index);
 }
 bool tracer_density_and_id_sort(tracer a, tracer b)
 {
@@ -101,6 +136,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   vector<shock>  smerge; //shocks that need to be merged
   vector<tracer> tmerge;
 
+  vector<shock>  sstore; //final revision before storing in bs
+  vector<tracer> tstore; //final revision before storing in bt
+
   shock  sbuf;            //buffer shocks
   vector<tracer> tbuf;    //buffer tracers
   vector<tracer> tsearch; //buffer tracers
@@ -133,6 +171,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   kdtree2 *peak_tree;
   array2dfloat peak_tree_data;
 
+  //gap trees
+  kdtree2 *gap_tree;
+  array2dfloat gap_tree_data;
+
+  vector<tracer> tgap;
+  int flag_gap_tree = 0;
+
+  //search results
+  kdtree2_result_vector gap_res;
 
   //flag indicating whether a search
   //tree was built
@@ -161,24 +208,25 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       //sort all the tracers by density, and then by id
       std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
 
-      //add to blended tracers
-      for(tt=0;tt<tbuf.size();tt++)
-      {
-        //set peak index
-        tbuf[tt].peak_index = tbuf[0].id;
-
-        //add to blended tracers
-        bt->push_back(tbuf[tt]);
-      }
-
-      //reset peak index
-      s[ss].id = tbuf[0].id;
-
+      //create the new, blended shock
+      sbuf.l  = tbuf.size();
+      sbuf.o  = tmerge.size();
+      sbuf.d  = tbuf[0].d;
+      sbuf.id = tbuf[0].id;
+      
       //set the peak box
-      set_peak_box(&s[ss], tbuf);
+      set_peak_box(&sbuf, tbuf);
 
-      //add peak to peak list
-      bs->push_back(s[ss]);
+      //adjust the tracers' peak indices
+      for(tt=0;tt<tbuf.size();tt++)
+        tbuf[tt].peak_index = sbuf.id;
+
+      //append tbuf to tmerge
+      it = tmerge.end();
+      tmerge.insert(it,tbuf.begin(),tbuf.end());
+
+      //append sbuf to smerge
+      smerge.push_back(sbuf);
 
       //destroy tbuf
       vector<tracer>().swap(tbuf);
@@ -193,11 +241,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
     //begin loop over peaks
     for(ss=0;ss<s.size();ss++)
-      printf("s[%ld].l %ld\n",ss,s[ss].l);
+      printf("s[%4ld].l %6ld id %10ld\n",ss,s[ss].l,s[ss].id);
 
 //    for(ss=0;ss<s.size();ss++)
-    nslim = 2;
-    if(s.size()<nslim)
+    //nslim = 2;
+    //if(s.size()<nslim)
       nslim = s.size();
     for(ss=0;ss<nslim;ss++)
     {
@@ -208,7 +256,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         if(box_collision(s[ss].min,s[ss].max,(*bs)[ssb].min,(*bs)[ssb].max))
           interactions.push_back(ssb);
       }
-      printf("Shock = %ld (l=%ld), number of interactions = %ld\n",ss,s[ss].l,interactions.size());
+      printf("Shock = %6ld (l=%6ld), number of interactions = %ld\n",ss,s[ss].l,interactions.size());
 
       //if there are no interactions, this is a new peak
       //this is the easiest case, add shock to sappend
@@ -239,7 +287,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         for(tt=0;tt<s[ss].l;tt++)
           tappend.push_back(tbuf[tt]);
 
-        printf("Added ss %ld (id = %ld) to the append list.\n",ss,s[ss].id);
+        printf("Added shock properties ss %ld l %10ld o %10ld d %e id %10ld\n",ss,s[ss].l,s[ss].o,s[ss].d,s[ss].id);
 
         //destroy tracer buffer
         vector<tracer>().swap(tbuf);
@@ -261,10 +309,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         if(interactions.size()==1)
         {
           i = interactions[0];
-          printf("Blended shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
-          printf("New shock box     %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
-          printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
-          printf("New shock properties     l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+          printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
+          printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
+          printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
+          printf("LDT shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
 
           //add the high and low density threshold
           //shocks' tracers to a buffer
@@ -305,6 +353,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           //destroy tbuf
           vector<tracer>().swap(tbuf);
 
+          printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+
         }//end interactions==1
 
 
@@ -318,7 +368,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           for(long ti=0;ti<interactions.size();ti++)
           {
             i = interactions[ti];
-            printf("ti %ld int %ld l %10ld o %10ld d %e id %10ld\n",ti,i,(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
+            printf("ti %6ld int %6ld l %10ld o %10ld d %e id %10ld\n",ti,i,(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
           }
 
           //this could take a while
@@ -371,6 +421,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           //reset group id
           s[ss].id = tbuf[0].id;
 
+          FILE *fpc;
+          fpc = fopen("test_tbuf.txt","w");
+          for(tt=0;tt<sbuf.l;tt++)
+            fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\n",tbuf[tt].x[0],tbuf[tt].x[1],tbuf[tt].x[2],tbuf[tt].d,tbuf[tt].id);;
+          fclose(fpc);
+
           //begin a loop over all the interactions
           for(long ti=0;ti<interactions.size();ti++)
           {
@@ -393,7 +449,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             {
               //the lower threshold peak contains the higher
               //density peak.
-              printf("interaction peak %6ld (id=%10ld) is in ss = %10ld (id=%10ld)\n",i,(*bs)[i].id,ss,s[ss].id);
+
+              printf("LDT DOES    CONTAIN HDT int peak %6ld (id=%10ld) is       in ss = %10ld (id=%10ld)\n",i,(*bs)[i].id,ss,s[ss].id);
 
               for(tt=0;tt<tbuf.size();tt++)
               {
@@ -402,22 +459,210 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 //find any A particles within bsq
                 bs_tree->n_nearest(xc,2,res);
 
-/*
-                if(res[0].dis<1.0e-15)
+                //if we've found the same particle, go ahead
+                //and assign it to the HDT peak
+                if((*bt)[res[0].idx].id==tbuf[tt].id)
+                {
+                  tbuf[tt].peak_index = (*bt)[res[0].idx].peak_index;
+                }else{
+
+                  //add this tracer to the gap region
+                  tgap.push_back(tbuf[tt]);
+
+                }
+                /*
+                if( ((*bt)[res[0].idx].peak_index==(*bt)[res[1].idx].peak_index) && res[0].dis<rmax)
+                {
+                  //two closest particles are in the same peak, and closest
+                  //is within the search radius
+                 // tbuf[tt].peak_index = (*bt)[res[0].idx].peak_index;
+                }else{
+
+                }
+                */
+
+                printf("tt %10ld tbuf.peak_id %10ld res[0].pid %10ld res[1].pid %10ld res[0].dis %e res[1].dis %e res[0].d %e res[1].d %e d %e\n",tt,tbuf[tt].peak_index,(*bt)[res[0].idx].peak_index,(*bt)[res[1].idx].peak_index,res[0].dis,res[1].dis,(*bt)[res[0].idx].d,(*bt)[res[1].idx].d,tbuf[tt].d);
+                /*if(res[0].dis<1.0e-15)
                 {
                   printf("ss %ld tt %ld k %d SAME tbuf.id %ld bt.id %ld\n",ss,tt,0,tbuf[tt].id,(*bt)[res[0].idx].id);
                 }else{
                   printf("ss %ld tt %ld k %d DIFFERENT tbuf.id %ld bt.id %ld\n",ss,tt,0,tbuf[tt].id,(*bt)[res[0].idx].id);
-                }
-*/
+                }*/
+
                 //error for same, check id; 
                 //otherwise build second tree and then adjust peak_index to assign
               }
+
+              //if there are particles in the gap (likely), build the tree
+              if(tgap.size()>0)
+              {
+                edgeg ein;
+                vector<edgeg> egap;
+
+                //build tree for tracers in gap between peaks
+                //(or around peaks at least)
+                gap_tree_data.resize(extents[tgap.size()][3]);
+                for(tt=0;tt<tgap.size();tt++)
+                  for(int k=0;k<3;k++)
+                    gap_tree_data[tt][k] = tgap[tt].x[k];
+                gap_tree = new kdtree2(gap_tree_data, true);
+                flag_gap_tree = 1;
+
+                //perform both searchs
+                for(tt=0;tt<tgap.size();tt++)
+                {
+                  //initialize query vectory
+                  for(int k=0;k<3;k++)
+                    xc[k] = gap_tree_data[tt][k];
+
+                  //search on HDT
+                  bs_tree->n_nearest(xc,1,res);
+
+                  //search on gap particles
+                  gap_tree->n_nearest(xc,2,gap_res);
+
+                  //if the HDT tracers are closer than
+                  //any gap tracers, go ahead and assign
+                  //this tracer to the HDT shock
+                  if(res[0].dis<gap_res[1].dis)
+                    tgap[tt].peak_index = (*bt)[res[0].idx].peak_index;
+
+
+                  //if we still don't know the peak
+                  //add this to the list of tracers
+                  //we need to sort out
+                  if(tgap[tt].peak_index==-1)
+                  { 
+                    ein.tt  = tt;
+                    ein.idxA = res[0].idx;
+                    ein.disA = res[0].dis;
+                    ein.idxg = gap_res[1].idx;
+                    ein.disg = gap_res[1].dis;
+                    ein.pid  = -1;
+                    egap.push_back(ein);
+                  }
+
+                  printf("tracer id %ld d %e pid %10ld bres id %ld bres dis %e bres d %e bres pid %ld gres id %ld gres dis %e gres d %e gres pid %ld\n",tgap[tt].id,tgap[tt].d,tgap[tt].peak_index,(*bt)[res[0].idx].id,res[0].dis,(*bt)[res[0].idx].d,(*bt)[res[0].idx].peak_index,tgap[gap_res[1].idx].id,gap_res[1].dis,tgap[gap_res[1].idx].d,tgap[gap_res[1].idx].peak_index);
+
+                }
+
+                //iteratively "bind" tracers
+                //in gap to a shock
+                while(egap.size()>0)
+                {
+                  printf("****\n");
+
+                  //OK, let's continue
+                  //sort the edges by distance to peaks
+                  std::sort(egap.begin(),egap.end(),edgeg_disA_sort);
+
+                  //set the peak_index of the tracer that is closest to a peak
+                  tgap[egap[0].tt].peak_index = (*bt)[egap[0].idxA].peak_index;
+                  egap[0].pid = tgap[egap[0].tt].peak_index;
+
+                  //find the tracers that have this tracer as its
+                  //nearest neighbor, and assign those to this shock
+                  //as well.
+                  for(tt=0;tt<egap.size();tt++)
+                  {
+                    if(tgap[egap[tt].idxg].peak_index!=-1)
+                    { 
+                      tgap[egap[tt].tt].peak_index = tgap[egap[tt].idxg].peak_index;
+                      egap[tt].pid = tgap[egap[tt].idxg].peak_index;
+                    }
+                    printf("tt %ld egap.tt %ld tracer id %ld d %e pid %10ld bres id %ld bres dis %e bres d %e bres pid %ld gres id %ld gres dis %e gres d %e gres pid %ld\n",tt,egap[tt].tt,tgap[egap[tt].tt].id,tgap[egap[tt].tt].d,tgap[egap[tt].tt].peak_index,(*bt)[egap[tt].idxA].id,egap[tt].disA,(*bt)[egap[tt].disA].d,(*bt)[egap[tt].disA].peak_index,tgap[egap[tt].idxg].id,egap[tt].disg,tgap[egap[tt].idxg].d,tgap[egap[tt].idxg].peak_index);
+                  }
+
+                  //let's resort and remove unassigned tracers
+                  std::sort(egap.begin(),egap.end(),edgeg_pid_sort);
+
+                  //remove tracers assigned to a peak
+                  for(tt=0;tt<egap.size();tt++)
+                    if(egap[tt].pid!=-1)
+                     break;
+                  egap.erase(egap.begin()+tt,egap.end());
+
+                  printf("XXXXX\n");
+                  for(tt=0;tt<egap.size();tt++)
+                  {
+                    printf("tt %ld egap.tt %ld tracer id %ld d %e pid %10ld bres id %ld bres dis %e bres d %e bres pid %ld gres id %ld gres dis %e gres d %e gres pid %ld\n",tt,egap[tt].tt,tgap[egap[tt].tt].id,tgap[egap[tt].tt].d,tgap[egap[tt].tt].peak_index,(*bt)[egap[tt].idxA].id,egap[tt].disA,(*bt)[egap[tt].disA].d,(*bt)[egap[tt].disA].peak_index,tgap[egap[tt].idxg].id,egap[tt].disg,tgap[egap[tt].idxg].d,tgap[egap[tt].idxg].peak_index);
+                  }
+                }
+
+                //OK, now we have to find all of the tracers
+                //in the tgap array in tbuf, and update their
+                //peak indices
+
+                //first sort tbuf by index
+                std::sort(tbuf.begin(),tbuf.end(),tracer_id_sort);
+
+                //loop over tgap, and up date peak indices
+                for(tt=0;tt<tgap.size();tt++)
+                {
+                  ia = tgap.begin() + tt;
+
+                  //search for tgap in tbuf
+                  it = std::search(tbuf.begin(),tbuf.end(),ia,ia+1,tracer_unique);
+
+                  //once found, fix the peak_index
+                  (*it).peak_index = tgap[tt].peak_index;
+                  //printf("tgapid %ld itid %ld tgappid %ld itpid %ld\n",tgap[tt].id,(*it).id,tgap[tt].peak_index,(*it).peak_index);
+                }
+
+                //resort tbuf
+                std::sort(tbuf.begin(),tbuf.end(),tracer_pid_and_density_and_id_sort);
+
+                //we can append these 
+                #error APPEND TBUF
+
+                //destroy egap
+                vector<tracer>().swap(tgap);
+                vector<edgeg>().swap(egap);
+
+                //free memory
+                gap_tree_data.resize(extents[0][0]);
+                free(gap_tree);
+                flag_gap_tree = 0;
+              }
+
+              //The first interaction of multiple has to be with the
+              //densest subpeak. So we can pare back tbuf to contain only the
+              //densest subpeak, and then do a simple append to the end
+              char fnamec[200];
+              sprintf(fnamec,"test_tbuf_2.txt");
+              fpc = fopen(fnamec,"w");
+              for(tt=0;tt<tbuf.size();tt++)
+                fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\t%ld\n",tbuf[tt].x[0],tbuf[tt].x[1],tbuf[tt].x[2],tbuf[tt].d,tbuf[tt].id,tbuf[tt].peak_index);
+              fclose(fpc);
+/*
+              char fnamec[200];
+              sprintf(fnamec,"test_gap_A.txt");
+              fpc = fopen(fnamec,"w");
+              for(tt=0;tt<tgap.size();tt++)
+                if(tgap[tt].peak_index==tgap[0].peak_index)
+                  fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\n",tgap[tt].x[0],tgap[tt].x[1],tgap[tt].x[2],tgap[tt].d,tgap[tt].id);;
+              fclose(fpc);
+
+              sprintf(fnamec,"test_gap_B.txt");
+              fpc = fopen(fnamec,"w");
+              for(tt=0;tt<tgap.size();tt++)
+                if(tgap[tt].peak_index!=tgap[0].peak_index)
+                  fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\n",tgap[tt].x[0],tgap[tt].x[1],tgap[tt].x[2],tgap[tt].d,tgap[tt].id);;
+              fclose(fpc);
+
+              sprintf(fnamec,"test_%ld.txt",i);
+              fpc = fopen(fnamec,"w");
+              for(tt=(*bs)[i].o;tt<(*bs)[i].o+(*bs)[i].l;tt++)
+                fprintf(fpc,"%e\t%e\t%e\t%e\t%ld\n",(*bt)[tt].x[0],(*bt)[tt].x[1],(*bt)[tt].x[2],(*bt)[tt].d,(*bt)[tt].id);;
+              fclose(fpc);
+*/
+              exit(-1);
+
             }else{
               //here the bounding boxes have just overlapped, and
               //the lower threshold peak does not contain the peak
               //of the higher threshold peak.
-              printf("interaction peak %6ld (id=%10ld) is *NOT* in ss = %10ld (id=%10ld)\n",i,(*bs)[i].id,ss,s[ss].id);
+              printf("LDT DOESN'T CONTAIN HDT int peak %6ld (id=%10ld) is *NOT* in ss = %10ld (id=%10ld)\n",i,(*bs)[i].id,ss,s[ss].id);
               //exit(-1);
 
               //OK, what fraction of the lower density peak
@@ -632,6 +877,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //we can search each particle in the overlap
               //to ensure it really should belong to the
               //dense peak based on the FOF search radius
+              //Add to tcorr or tcorr_lowd accordingly.
               printf("BEFORE tcorr.size() %ld tcorr_lowd.size() %ld\n",tcorr.size(),tcorr_lowd.size());
               for(tt=0;tt<toverlap.size();tt++)
               {
@@ -675,6 +921,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //should properly belong to the high-density peak
 
 //#error   DECIDE HOW TO INCORPORATE THESE INTO CATALOGUES
+              //MIGHT BE BACKWARD (replace tbuf with tcorr instead)?
 
 
               //we need to replace tbuf with tcorr_lowd
@@ -711,7 +958,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               vector<tracer>().swap(tcbuf);
               //vector<tracer>().swap(tout);
 
-            exit(-1);
+              exit(-1);
             }
 
 
@@ -721,11 +968,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
           }//end loop over interactions
 
+          //if(interactions.size()>1)
+            //exit(-1);
+
           //what ever is left in tbuf after
           //going through all the interactions 
           //is new, and gets added to tappend/sappend
           
-          /*
+          
           if(tbuf.size()>0)
           {
             //sort tracers by density, then id
@@ -746,10 +996,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
             //append shock and tracers to the append lists
             sappend.push_back(sbuf);
-            for(tt=0;tt<s[ss].l;tt++)
+            for(tt=0;tt<sbuf.l;tt++)
               tappend.push_back(tbuf[tt]);
           }
-          */
+          
                     
           //destroy tbuf
           vector<tracer>().swap(tbuf);
@@ -763,32 +1013,66 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       vector<int>().swap(interactions);
 
     }//end loop over low density threshold shocks (ss)
-
-    //vacate bs and bt
-    (*bs).clear();
-    bt->clear();
-
-    //bs shocks with int=1 and int>1 can
-    //appear in both categories
-
-    //merge grown shocks
-    for(ss=0;ss<smerge.size();ss++)
-      bs->push_back(smerge[ss]);
-    for(tt=0;tt<tmerge.size();tt++)
-      bt->push_back(tmerge[tt]);
-
-    //append new shocks
-    for(ss=0;ss<sappend.size();ss++)
-      bs->push_back(sappend[ss]);
-    for(tt=0;tt<tappend.size();tt++)
-      bt->push_back(tappend[tt]);
-
-    //fix offsets
-    (*bs)[0].o = 0;
-    for(ss=1;ss<(*bs).size();ss++)
-      (*bs)[ss].o = (*bs)[ss-1].o + (*bs)[ss].l;
-
   } //end bs->size()>0
+
+  //vacate bs and bt
+  (*bs).clear();
+  bt->clear();
+
+  //bs shocks with int=1 and int>1 can
+  //appear in both categories
+
+  //so we need to combine into a buffer
+  //and, sort by shock peak density,
+  //and then store in bs and bt.
+  for(ss=0;ss<smerge.size();ss++)
+    sstore.push_back(smerge[ss]);
+  for(tt=0;tt<tmerge.size();tt++)
+    tstore.push_back(tmerge[tt]);
+
+  for(ss=0;ss<sappend.size();ss++)
+    sstore.push_back(sappend[ss]);
+  for(tt=0;tt<tappend.size();tt++)
+    tstore.push_back(tappend[tt]);
+
+  //fix offsets
+  sstore[0].o = 0;
+  for(ss=1;ss<sstore.size();ss++)
+    sstore[ss].o = sstore[ss-1].o + sstore[ss-1].l;
+
+  //sort sstore based on density
+  std::sort(sstore.begin(), sstore.end(), shock_density_sort);
+
+  //put tracers in bt according to new order
+  tt=0;
+  for(ss=0;ss<sstore.size();ss++)
+    for(tt=sstore[ss].o;tt<sstore[ss].o+sstore[ss].l;tt++)
+      bt->push_back(tstore[tt]);
+
+  //fix offsets for the last time, after sorting tracers
+  sstore[0].o = 0;
+  for(ss=1;ss<sstore.size();ss++)
+    sstore[ss].o = sstore[ss-1].o + sstore[ss-1].l;
+
+  //put in shocks
+  for(ss=0;ss<sstore.size();ss++)
+    bs->push_back(sstore[ss]);
+
+  //destroy buffer memory
+  vector<tracer>().swap(tmerge);
+  vector<tracer>().swap(tappend);
+  vector<tracer>().swap(tstore);
+  vector<shock>().swap(smerge);
+  vector<shock>().swap(sappend);
+  vector<shock>().swap(sstore);
+
+  printf("********** Blended Shock List\n");
+  for(ss=0;ss<(*bs).size();ss++)
+  {
+    sbuf = (*bs)[ss];
+    printf("ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+  }
+  printf("********** END Blended Shock List\n");
 
   //if necessary, free memory
   //associated with tree
