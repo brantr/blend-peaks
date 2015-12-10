@@ -1132,11 +1132,23 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 //  for(ss=0;ss<skeep.size();ss++)
   //  bs->push_back(skeep[ss]);
 
+  //LENGTH CHECK
+  //all the particles in t should be in tfinal
+  if(t.size()!=tfinal.size())
+  {
+    printf("LENGTH ERROR LOST TRACERS t.size %ld tfinal.size() %ld",t.size(),tfinal.size());
+    exit(-1);
+  }else{
+    printf("PASS ALL TRACERS FOUND t.size %ld tfinal.size() %ld\n",t.size(),tfinal.size());
+  }
+
   //destroy buffer memory
   vector<tracer>().swap(tmerge);
   vector<tracer>().swap(tappend);
   vector<tracer>().swap(tstore);
   vector<tracer>().swap(tkeep);
+  vector<tracer>().swap(tfinal);
+
   vector<shock>().swap(smerge);
   vector<shock>().swap(sappend);
   vector<shock>().swap(sstore);

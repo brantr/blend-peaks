@@ -160,6 +160,21 @@ int main(int argc, char **argv)
   //close the list of peak catalogue directories
   fclose(fplist);
 
+
+  //output the catalogue of blended peaks
+  sprintf(flist,"%s/peak.blended.%04d.list",fdirbase,isnap);
+  sprintf(fdata,"%s/peak.blended.%04d.dat",fdirbase,isnap);
+  printf("Writing catalogue list = %s, data = %s.\n",flist,fdata);
+  write_shock_list(flist,bs);
+  write_shock_data(fdata,bs,bt);
+
+
+  //destroy the blended shocks
+  vector<shock>().swap(bs);
+
+  //destroy the blended tracers
+  vector<tracer>().swap(bt);
+     
   //start timer
   t_end_all = timer();
 
