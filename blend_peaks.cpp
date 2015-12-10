@@ -32,6 +32,10 @@ bool tracer_id_sort(tracer a, tracer b)
 {
   return (a.id<b.id);
 }
+bool shock_id_sort(shock a, shock b)
+{
+  return (a.id<b.id);
+}
 bool shock_density_sort(shock a, shock b)
 {
   return (a.d>b.d);
@@ -937,32 +941,206 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   for(ss=1;ss<sstore.size();ss++)
     sstore[ss].o = sstore[ss-1].o + sstore[ss-1].l;
 
+  //there might be duplicates, because of marginal 
+  //overlapping shocks
+
+  //sort shocks by peak id
+  std::sort(sstore.begin(), sstore.end(), shock_id_sort);
+
+  vector<shock>  skeep;
+  vector<tracer> tkeep;
+
+  //check for duplicates
+
+  //first, keep the first peak
+  skeep.push_back(sstore[0]);
+  for(tt=sstore[0].o;tt<sstore[0].o+sstore[0].l;tt++)
+    tkeep.push_back(tstore[tt]);
+
+  //now loop over peaks
+  for(ss=1;ss<sstore.size();ss++)
+  {
+    //if the peak is not a duplicate,
+    //keep it
+    if(sstore[ss].id!=sstore[ss-1].id)
+    {
+      skeep.push_back(sstore[ss]);
+    }else{
+      skeep[skeep.size()-1].l += sstore[ss].l;
+    }
+
+    //but be sure to store it's particles
+    //in any case
+    for(tt=sstore[ss].o;tt<sstore[ss].o+sstore[ss].l;tt++)
+      tkeep.push_back(tstore[tt]);
+  }
+
+
+
+  //reset the offsets
+  skeep[0].o = 0;
+  for(ss=1;ss<skeep.size();ss++)
+  {
+    skeep[ss].o = skeep[ss-1].o + skeep[ss-1].l;
+  }
+
+  //need to remove duplicate tracers
+  vector<tracer> tfinal, tfbuf;
+
+  //loop over the shocks that we're keeping
+  for(ss=0;ss<skeep.size();ss++)
+  {
+    //correct skeep
+    //printf("SKEEP ss %ld l %6ld o %6ld id %10ld d %e\n",ss,skeep[ss].l,skeep[ss].o,skeep[ss].id,skeep[ss].d);
+
+    //first, put the tracers from
+    //this shock into a buffer
+    for(tt=skeep[ss].o;tt<skeep[ss].o+skeep[ss].l;tt++)
+      tfbuf.push_back(tkeep[tt]);
+
+    //printf("BEFORE T SORT BY ID tbuf[0].id %ld\n",tfbuf[0].id);
+
+    //sort by id
+    std::sort(tfbuf.begin(),tfbuf.end(),tracer_id_sort);
+
+    //keep unique entries
+    it = std::unique(tfbuf.begin(), tfbuf.end(), tracer_unique);
+    tfbuf.resize( std::distance(tfbuf.begin(), it) );
+
+    //resort tfbuf by density
+    std::sort(tfbuf.begin(),tfbuf.end(),tracer_density_and_id_sort);
+
+    //put tbuf in tfinal
+    for(tt=0;tt<tfbuf.size();tt++)
+      tfinal.push_back(tfbuf[tt]);
+
+    //correct skeep length
+    skeep[ss].l = tfbuf.size();
+
+    //check for an error
+    if(skeep[ss].id!=tfbuf[0].id)
+    {
+      printf("ID ERROR ss %ld skeep.id %ld tfbuf.id %ld skeep.l %ld\n",ss,skeep[ss].id,tfbuf[0].id,skeep[ss].l);
+      exit(-1);
+    }
+
+    //destroy tfbuf
+    vector<tracer>().swap(tfbuf);
+  }
+
+  //correct offsets
+  skeep[0].o = 0;
+  for(ss=1;ss<skeep.size();ss++)
+  {
+    skeep[ss].o = skeep[ss-1].o + skeep[ss-1].l;
+  }
+
+  //OK, now sort skeep based on density
+  std::sort(skeep.begin(), skeep.end(), shock_density_sort);
+
+
+  //Store the tracers in blended shocks
+  tt=0;
+  for(ss=0;ss<skeep.size();ss++)
+    for(tt=skeep[ss].o;tt<skeep[ss].o+skeep[ss].l;tt++)
+      bt->push_back(tfinal[tt]);
+  
+
+
+  //fix offsets for the last time, after sorting tracers
+  skeep[0].o = 0;
+  for(ss=1;ss<skeep.size();ss++)
+  {
+    skeep[ss].o = skeep[ss-1].o + skeep[ss-1].l;
+  }
+  
+  //put in shocks
+  for(ss=0;ss<skeep.size();ss++)
+    bs->push_back(skeep[ss]);
+
+  //printf("CHECKING KEEP *********\n");
+  //for(ss=0;ss<skeep.size();ss++)
+    //printf("ss %6ld KEEP l %6ld o %6ld id %10ld d %e\n",ss,skeep[ss].l,skeep[ss].o,skeep[ss].id,skeep[ss].d);
+
+  //OK, now skeep and tkeep are our 
+  //corrected shocks. But tkeep probably
+  //contains duplicates 
+
   //sort sstore based on density
-  std::sort(sstore.begin(), sstore.end(), shock_density_sort);
+  //std::sort(sstore.begin(), sstore.end(), shock_density_sort);
+/*
+
+  vector<shock>  skeep;
+  vector<tracer> tkeep;
+  //check for duplicates and remove them
+  for(ss=0;ss<sstore.size();ss++)
+  {
+    if(ss==sstore.size()-1)
+    {
+      skeep.push_back(sstore[ss]);
+      for(tt=sstore[ss].o;tt<sstore[ss].l;tt++)
+        tkeep.push_back(tstore[tt]);
+    }else if(sstore[ss].id==sstore[ss+1].id)
+    {
+      //we have a duplicate
+      skeep.push_back(sstore[ss]);
+      for(tt=sstore[ss].o;tt<sstore[ss].l;tt++)
+        tkeep.push_back(tstore[tt]);
+
+      ss++; //skip duplicate
+    }else{
+      skeep.push_back(sstore[ss]);
+      for(tt=sstore[ss].o;tt<sstore[ss].l;tt++)
+        tkeep.push_back(tstore[tt]);
+    }
+  }
+
+  //
+  //fix offsets
+  skeep[0].o = 0;
+  for(ss=1;ss<skeep.size();ss++)
+    skeep[ss].o = skeep[ss-1].o + skeep[ss-1].l;
 
   //put tracers in bt according to new order
+  tt=0;
+  for(ss=0;ss<skeep.size();ss++)
+    for(tt=skeep[ss].o;tt<skeep[ss].o+skeep[ss].l;tt++)
+      bt->push_back(tkeep[tt]);
+    */
+  
+  /*
   tt=0;
   for(ss=0;ss<sstore.size();ss++)
     for(tt=sstore[ss].o;tt<sstore[ss].o+sstore[ss].l;tt++)
       bt->push_back(tstore[tt]);
+  
+
 
   //fix offsets for the last time, after sorting tracers
   sstore[0].o = 0;
   for(ss=1;ss<sstore.size();ss++)
+  {
     sstore[ss].o = sstore[ss-1].o + sstore[ss-1].l;
+  }
+  
 
   //put in shocks
   for(ss=0;ss<sstore.size();ss++)
     bs->push_back(sstore[ss]);
+  */
+
+//  for(ss=0;ss<skeep.size();ss++)
+  //  bs->push_back(skeep[ss]);
 
   //destroy buffer memory
   vector<tracer>().swap(tmerge);
   vector<tracer>().swap(tappend);
   vector<tracer>().swap(tstore);
+  vector<tracer>().swap(tkeep);
   vector<shock>().swap(smerge);
   vector<shock>().swap(sappend);
   vector<shock>().swap(sstore);
-
+  vector<shock>().swap(skeep);
 
   //print information about the shocks.
 
@@ -971,6 +1149,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   for(ss=0;ss<(*bs).size();ss++)
   {
     sbuf = (*bs)[ss];
+
+
+      
     if(ss<scomp.size())
     {
       sbufB = scomp[ss];
@@ -978,6 +1159,13 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     }else{
       printf("ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id);
     }
+
+    if(ss>0)
+      if(sbuf.id==(*bs)[ss-1].id)
+      {
+        printf("DUPLICATE SHOCKS ERROR\n");
+        exit(-1);
+      }
   }
   printf("********** END Blended Shock List\n");
 
