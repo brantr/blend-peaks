@@ -626,7 +626,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
                   printf("BEFORE egap.pid %ld egap.size() %ld\n",egap[tt].pid,egap.size());
                   egap.erase(egap.begin()+tt,egap.end());
-                  printf("AFTER egap.pid %ld egap.size() %ld\n",egap[egap.size()-1].pid,egap.size());
+                  if(egap.size()>0)
+                  {
+                    printf("AFTER egap.pid %ld egap.size() %ld\n",egap[egap.size()-1].pid,egap.size());
+                  }else{
+                    printf("AFTER egap.pid %ld egap.size() %ld\n",-1,pid,egap.size());
+                  }
 
                 }//while(egap.size()>0)
 
