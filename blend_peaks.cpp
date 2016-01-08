@@ -265,8 +265,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       vector<tracer>().swap(tbuf);
 
     }//end loop over shocks
-
-  
   }else{//end bs->size()==0
 
     //this is our main work loop
@@ -506,6 +504,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //remember that we've done this multiple interaction
               flag_multi = 1;
 
+              //in this branch,
               //the lower threshold peak contains the higher
               //density peak.
 
@@ -516,8 +515,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               for(tt=0;tt<tbuf.size();tt++)
               {
+                //check the location of the particle
                 for(int k=0;k<3;k++)
                   xc[k] = tbuf[tt].x[k];
+
                 //find any A particles within bsq
                 bs_tree->n_nearest(xc,2,res);
 
@@ -534,7 +535,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 }
               }
 
-              //if there are particles in the gap (likely), build the tree
+              //if there are particles in the gap (likely), 
+              //build a tree for the particles in the gap
               if(tgap.size()>0)
               {
                 edgeg ein;
@@ -544,12 +546,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 //(or around peaks at least)
                 gap_tree_data.resize(extents[tgap.size()][3]);
                 for(tt=0;tt<tgap.size();tt++)
+                {
+                  tgap[tt].peak_index = -1;
                   for(int k=0;k<3;k++)
                     gap_tree_data[tt][k] = tgap[tt].x[k];
+                }
                 gap_tree = new kdtree2(gap_tree_data, true);
                 flag_gap_tree = 1;
 
-                //perform both searchs
+                //loop over particles in the gap
                 for(tt=0;tt<tgap.size();tt++)
                 {
                   //initialize query vectory
