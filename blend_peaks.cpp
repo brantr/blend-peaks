@@ -641,11 +641,19 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   }
                 }//tgap.size()
 
+                printf("egap.size() %ld\n",egap.size());
+
+                int neiter=0;
+
                 //iteratively "bind" tracers
                 //in gap to a shock
                 while(egap.size()>0)
                 {
                   //printf("****\n");
+
+                  neiter++;
+                  if(!(neiter%100))
+                    printf("iteration %d egap %ld\n",neiter,egap.size());
 
                   //OK, let's continue
                   //sort the edges by distance to peaks
