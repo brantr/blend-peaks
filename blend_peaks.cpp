@@ -109,6 +109,8 @@ void keep_duplicates(vector<tracer> tunion, vector<tracer> *toverlap)
 void keep_unique(vector<tracer> tcbuf, vector<tracer> *tcorr)
 {
   long tt=0;
+  if(tcbuf.size()==1)
+    tcorr->push_back(tcbuf[0]);
   while(tt<tcbuf.size()-1)
   {
     if(tcbuf[tt].id!=tcbuf[tt+1].id)
@@ -119,8 +121,9 @@ void keep_unique(vector<tracer> tcbuf, vector<tracer> *tcorr)
     }
     tt++;
   }
-  if(tcbuf[tcbuf.size()-2].id!=tcbuf[tcbuf.size()-1].id)
-    tcorr->push_back(tcbuf[tcbuf.size()-1]);
+  if(tcbuf.size()>1)
+    if(tcbuf[tcbuf.size()-2].id!=tcbuf[tcbuf.size()-1].id)
+      tcorr->push_back(tcbuf[tcbuf.size()-1]);
 }
 
 void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<tracer> t, double rmax)
@@ -236,7 +239,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       //add all the tracers from
       //this shock to a buffer
       for(tt=0;tt<s[ss].l;tt++)
+      {
         tbuf.push_back(t[s[ss].o+tt]);
+
+        if(t[s[ss].o+tt].id==5708317)
+        {
+          printf("PRESENT A ss %ld\n",ss);
+          exit(-1);
+        }
+      }
       
       //sort all the tracers by density, and then by id
       std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
@@ -321,7 +332,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
         //Put tracers into a buffer
         for(tt=0;tt<s[ss].l;tt++)
+        {
           tbuf.push_back(t[s[ss].o+tt]);
+          /*if(t[s[ss].o+tt].id==5708317)
+          {
+            printf("PRESENT B ss %ld\n",ss);
+            exit(-1);
+          }*/
+        }
       
         //sort tracers by density, then id
         std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
@@ -375,7 +393,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           //add the high and low density threshold
           //shocks' tracers to a buffer
           for(tt=0;tt<s[ss].l;tt++)
+          {
             tbuf.push_back(t[s[ss].o+tt]);
+            if(t[s[ss].o+tt].id==5708317)
+            {
+              printf("PRESENT C ss %ld\n",ss);
+              exit(-1);
+            }
+          }
           for(tt=0;tt<(*bs)[i].l;tt++)
             tbuf.push_back((*bt)[(*bs)[i].o+tt]);
 
@@ -471,6 +496,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           {
             tbuf.push_back(t[s[ss].o+tt]);
             tbuf[tt].peak_index = -1;
+            if(t[s[ss].o+tt].id==5708317)
+            {
+              printf("PRESENT D ss %ld\n",ss);
+              //exit(-1);
+            }
           }
 
           //sort by density, then id
@@ -512,9 +542,17 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               printf("LDT DOES    CONTAIN HDT int peak %6ld (id=%10ld) is       in ss = %10ld (id=%10ld)\n",i,(*bs)[i].id,ss,s[ss].id);
 
               //why not just build a separate tree buffer?
-
+              //loop over tbuf, search the tree for nearest
+              //particle, which is either in a peak (then assign it)
+              //or is not, and we place the particle in the 
+              //array tgap
               for(tt=0;tt<tbuf.size();tt++)
               {
+                if(tbuf[tt].id==5708317)
+                {
+                  printf("PRESENT E ss %ld\n",ss);
+                  //exit(-1);
+                }
                 //check the location of the particle
                 for(int k=0;k<3;k++)
                   xc[k] = tbuf[tt].x[k];
@@ -526,6 +564,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 //and assign it to the HDT peak
                 if((*bt)[res[0].idx].id==tbuf[tt].id)
                 {
+
+                  if(tbuf[tt].id==5708317&&ss==286)
+                  {
+                    printf("PRESENT E in BT ss %ld pid %ld\n",ss,(*bt)[res[0].idx].peak_index);
+                    //exit(-1);
+                  }
                   //assign to HDT
                   tbuf[tt].peak_index = (*bt)[res[0].idx].peak_index;
 
@@ -534,6 +578,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   tgap.push_back(tbuf[tt]);
                 }
               }
+
+              printf("tgap.size() %ld\n",tgap.size());
 
               //if there are particles in the gap (likely), 
               //build a tree for the particles in the gap
@@ -547,6 +593,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 gap_tree_data.resize(extents[tgap.size()][3]);
                 for(tt=0;tt<tgap.size();tt++)
                 {
+
+                  if(tgap[tt].id==5708317&&ss==286)
+                  {
+                    printf("PRESENT E in gap ss %ld\n",ss);
+                    //exit(-1);
+                  }
                   tgap[tt].peak_index = -1; //reset 
                   for(int k=0;k<3;k++)
                     gap_tree_data[tt][k] = tgap[tt].x[k];
@@ -661,6 +713,13 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 {
                   tstmp.push_back(tbuf[tt]);
 
+
+                  if(tbuf[tt].id==5708317&&ss==286)
+                  {
+                    printf("PRESENT E in tstmp ss %ld\n",ss);
+                    //exit(-1);
+                  }
+
                   if(tt==tbuf.size()-1)
                   {
                     sbuf.l  = tstmp.size();
@@ -703,6 +762,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                     pid = tbuf[tt+1].peak_index;
                   }
 
+                  //make sure pid is never unassigned
                   if(pid==-1)
                   {
                     printf("ERROR pid -1\n");
@@ -712,7 +772,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
 
 
-                //destroy egap
+                //destroy tgap and egap
                 vector<tracer>().swap(tgap);
                 vector<edgeg>().swap(egap);
 
@@ -720,6 +780,72 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 gap_tree_data.resize(extents[0][0]);
                 free(gap_tree);
                 flag_gap_tree = 0;
+
+              }else{ //tgap.size()>0 -> are particles in the gap btwn peaks?
+
+                //there are no particles in the gap
+
+                //re-sort tbuf
+                std::sort(tbuf.begin(),tbuf.end(),tracer_pid_and_density_and_id_sort);
+                
+                //add particles to tmerge
+
+                vector<tracer> tstmp;
+
+                long pid = tbuf[0].peak_index;
+                for(tt=0;tt<tbuf.size();tt++)
+                {
+                  tstmp.push_back(tbuf[tt]);
+
+
+                  if(tbuf[tt].id==5708317&&ss==286)
+                  {
+                    printf("PRESENT E in tstmp but tgap==0 ss %ld\n",ss);
+                    //exit(-1);
+                  }
+
+                  if(tt==tbuf.size()-1)
+                  {
+                    sbuf.l  = tstmp.size();
+                    sbuf.o  = 0;
+                    sbuf.d  = tstmp[0].d;
+                    sbuf.id = tstmp[0].id;
+                    set_peak_box(&sbuf,tstmp);
+
+                    //add tracers to tmerge  //ADDTMERGE
+                    smerge.push_back(sbuf);
+                    for(long si=0;si<tstmp.size();si++)
+                    {
+                      tmerge.push_back(tstmp[si]);
+                    }
+
+                    //clear tstmp
+                    vector<tracer>().swap(tstmp);                    
+
+                  }else if(tbuf[tt+1].peak_index!=pid){
+
+                    //store this shock
+
+                    sbuf.l  = tstmp.size();
+                    sbuf.o  = 0;
+                    sbuf.d  = tstmp[0].d;
+                    sbuf.id = tstmp[0].id;
+                    set_peak_box(&sbuf,tstmp);
+
+                    //add tracers to tmerge //ADDTMERGE
+                    smerge.push_back(sbuf);
+                    for(long si=0;si<tstmp.size();si++)
+                    {
+                      tmerge.push_back(tstmp[si]);
+                    }
+
+                    //clear tstmp
+                    vector<tracer>().swap(tstmp);
+
+                    //update pid
+                    pid = tbuf[tt+1].peak_index;
+                  }
+                }//end loop over tbuf
               }
 
               //Done!
@@ -730,7 +856,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //here the bounding boxes have just overlapped, and
               //the lower threshold peak does not contain the peak
               //of the higher threshold peak.
-              printf("LDT DOESN'T CONTAIN HDT int peak %6ld (id=%10ld) is *NOT* in ss = %10ld (id=%10ld)\n",i,(*bs)[i].id,ss,s[ss].id);
+              printf("LDT DOESN'T CONTAIN HDT int peak %6ld (id=%10ld) is *NOT* in ss = %10ld (id=%10ld (tbuf.size() %ld; bs.l %ld))\n",i,(*bs)[i].id,ss,s[ss].id,tbuf.size(),(*bs)[i].l);
 
               //OK, what fraction of the lower density peak
               //overlaps with the higher density peak?
@@ -744,6 +870,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //tracers
               for(tt=0;tt<(*bs)[i].l;tt++)
                 tunion.push_back((*bt)[(*bs)[i].o+tt]);
+
+              for(tt=0;tt<tbuf.size();tt++)
+              {
+                if(tbuf[tt].id==5708317)
+                {
+                  printf("PRESENT F ss %ld\n",ss);
+                  //exit(-1);
+                }
+              }
 
               //add tbuf to the end of tunion
               it = tunion.end();
@@ -860,9 +995,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //threshold peak, excluding any particles that
               //should properly belong to the high-density peak
 
-              //MIGHT BE BACKWARD (replace tbuf with tcorr instead)?
-
-
               //we need to replace tbuf with tcorr_lowd
 
               printf("Replacing tbuf.size() %ld with tcorr_lowd.size() %ld\n",tbuf.size(),tcorr_lowd.size());
@@ -891,6 +1023,23 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               free(peak_tree);
               peak_tree_data.resize(extents[0][0]);
 
+              for(tt=0;tt<tunion.size();tt++)
+              {
+                if(tunion[tt].id==5708317&&ss==286)
+                {
+                  printf("PRESENT F IN UNION ss %ld\n",ss);
+                  //exit(-1);
+                }
+              }
+
+              for(tt=0;tt<tbuf.size();tt++)
+              {
+                if(tbuf[tt].id==5708317&&ss==286)
+                {
+                  printf("PRESENT F IN tbuf ss %ld\n",ss);
+                  //exit(-1);
+                }
+              }
               //destroy ttest
               vector<tracer>().swap(tunion);
               vector<tracer>().swap(toverlap);
@@ -905,6 +1054,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               flag_box_fail = 1;
               //printf("BOX FAIL %d\n",flag_box_fail);
               //exit(-1);
+
+
             }
 
             //destroy tsearch
@@ -1267,7 +1418,26 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //all the particles in t should be in tfinal
   if(t.size()!=tfinal.size())
   {
-    printf("LENGTH ERROR LOST TRACERS t.size %ld tfinal.size() %ld",t.size(),tfinal.size());
+    printf("LENGTH ERROR LOST TRACERS t.size %ld tfinal.size() %ld\n",t.size(),tfinal.size());
+
+    //OK, we have a problem.  Let's sort both t and tfinal by tracer ID
+    //then we can search and identify what is missing.
+    std::sort(t.begin(), t.end(), tracer_id_sort);
+    std::sort(tfinal.begin(),tfinal.end(),tracer_id_sort);
+
+    for(tt=0;tt<t.size()-1;tt++)
+    {
+      if(t[tt].id!=tfinal[tt].id)
+      {
+        if(tt!=0)
+          printf("tt-1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-1,t[tt-1].id,t[tt-1].peak_index,tfinal[tt-1].id,tfinal[tt-1].peak_index);
+        printf("tt   %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt,t[tt].id,t[tt].peak_index,tfinal[tt].id,tfinal[tt].peak_index);
+        printf("tt+1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+1,t[tt+1].id,t[tt+1].peak_index,tfinal[tt+1].id,tfinal[tt+1].peak_index);
+        break;
+      }
+    }
+    //5708317 is missing
+
     exit(-1);
   }else{
     printf("PASS ALL TRACERS FOUND t.size %ld tfinal.size() %ld\n",t.size(),tfinal.size());
