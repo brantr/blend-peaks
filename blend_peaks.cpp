@@ -547,7 +547,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 gap_tree_data.resize(extents[tgap.size()][3]);
                 for(tt=0;tt<tgap.size();tt++)
                 {
-                  tgap[tt].peak_index = -1;
+                  tgap[tt].peak_index = -1; //reset 
                   for(int k=0;k<3;k++)
                     gap_tree_data[tt][k] = tgap[tt].x[k];
                 }
@@ -601,7 +601,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
                   //set the peak_index of the tracer that is closest to a peak
                   tgap[egap[0].tt].peak_index = (*bt)[egap[0].idxA].peak_index;
-                  egap[0].pid = tgap[egap[0].tt].peak_index;
+                  egap[0].pid                 = tgap[egap[0].tt].peak_index;
 
                   //find the tracers that have this tracer as its
                   //nearest neighbor, and assign those to this shock
@@ -623,7 +623,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   for(tt=0;tt<egap.size();tt++)
                     if(egap[tt].pid!=-1)
                      break;
+
+                  printf("BEFORE egap.pid %ld egap.size() %ld\n",egap[tt].pid,egap.size());
                   egap.erase(egap.begin()+tt,egap.end());
+                  printf("AFTER egap.pid %ld egap.size() %ld\n",egap[egap.size()-1].pid,egap.size());
+
                 }//while(egap.size()>0)
 
                 //OK, now we have to find all of the tracers
