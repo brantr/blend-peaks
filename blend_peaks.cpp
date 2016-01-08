@@ -25,6 +25,10 @@ bool edgeg_disg_sort(edgeg a, edgeg b)
 {
   return (a.disg<b.disg);
 }
+bool edgeg_pid_assigned(edgeg a)
+{
+  return (a.pid!=-1);
+}
 bool tracer_unique(tracer a, tracer b)
 {
   return (a.id==b.id);
@@ -242,10 +246,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       {
         tbuf.push_back(t[s[ss].o+tt]);
 
-        if(t[s[ss].o+tt].id==5708317)
+        //if(t[s[ss].o+tt].id==5708317)
+        if(t[s[ss].o+tt].id==294744)
         {
           printf("PRESENT A ss %ld\n",ss);
-          exit(-1);
+          //exit(-1);
         }
       }
       
@@ -339,6 +344,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             printf("PRESENT B ss %ld\n",ss);
             exit(-1);
           }*/
+          if(t[s[ss].o+tt].id==294744)
+          {
+            printf("PRESENT B ss %ld\n",ss);
+          }
+
         }
       
         //sort tracers by density, then id
@@ -395,7 +405,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           for(tt=0;tt<s[ss].l;tt++)
           {
             tbuf.push_back(t[s[ss].o+tt]);
-            if(t[s[ss].o+tt].id==5708317)
+  //          if(t[s[ss].o+tt].id==5708317)
+            if(t[s[ss].o+tt].id==294744)
             {
               printf("PRESENT C ss %ld\n",ss);
               exit(-1);
@@ -496,7 +507,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           {
             tbuf.push_back(t[s[ss].o+tt]);
             tbuf[tt].peak_index = -1;
-            if(t[s[ss].o+tt].id==5708317)
+//            if(t[s[ss].o+tt].id==5708317)
+            if(t[s[ss].o+tt].id==294744)
             {
               printf("PRESENT D ss %ld\n",ss);
               //exit(-1);
@@ -548,7 +560,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //array tgap
               for(tt=0;tt<tbuf.size();tt++)
               {
-                if(tbuf[tt].id==5708317)
+//                if(tbuf[tt].id==5708317)
+                if(t[s[ss].o+tt].id==294744)
                 {
                   printf("PRESENT E ss %ld\n",ss);
                   //exit(-1);
@@ -565,7 +578,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 if((*bt)[res[0].idx].id==tbuf[tt].id)
                 {
 
-                  if(tbuf[tt].id==5708317&&ss==286)
+//                  if(tbuf[tt].id==5708317&&ss==286)
+                  if(t[s[ss].o+tt].id==294744)
                   {
                     printf("PRESENT E in BT ss %ld pid %ld\n",ss,(*bt)[res[0].idx].peak_index);
                     //exit(-1);
@@ -587,6 +601,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               {
                 edgeg ein;
                 vector<edgeg> egap;
+                vector<edgeg>::iterator ei;
 
                 //build tree for tracers in gap between peaks
                 //(or around peaks at least)
@@ -594,7 +609,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 for(tt=0;tt<tgap.size();tt++)
                 {
 
-                  if(tgap[tt].id==5708317&&ss==286)
+//                  if(tgap[tt].id==5708317&&ss==286)
+                  if(t[s[ss].o+tt].id==294744)
                   {
                     printf("PRESENT E in gap ss %ld\n",ss);
                     //exit(-1);
@@ -647,6 +663,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
                 //iteratively "bind" tracers
                 //in gap to a shock
+                /*slow but works
                 while(egap.size()>0)
                 {
                   //printf("****\n");
@@ -687,6 +704,57 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   //remove assigned tracers
                   egap.erase(egap.begin()+tt,egap.end());
                 }//while(egap.size()>0)
+                */
+
+                //sort the edges by distance to peaks
+                std::sort(egap.begin(),egap.end(),edgeg_disA_sort);
+
+                while(egap.size()>0)
+                {
+                  //printf("****\n");
+
+                  neiter++;
+                  if(!(neiter%100))
+                    printf("iteration %d egap %ld\n",neiter,egap.size());
+
+                  //OK, let's continue
+
+
+                  //set the peak_index of the tracer that is closest to a peak
+                  tgap[egap[0].tt].peak_index = (*bt)[egap[0].idxA].peak_index;
+                  egap[0].pid                 = tgap[egap[0].tt].peak_index;
+
+                  //find the tracers that have this tracer as its
+                  //nearest neighbor, and assign those to this shock
+                  //as well.
+                  for(tt=0;tt<egap.size();tt++)
+                  {
+                    if(tgap[egap[tt].idxg].peak_index!=-1)
+                    { 
+                      tgap[egap[tt].tt].peak_index = tgap[egap[tt].idxg].peak_index;
+                      egap[tt].pid = tgap[egap[tt].idxg].peak_index;
+                    }
+                    //printf("tt %ld egap.tt %ld tracer id %ld d %e pid %10ld bres id %ld bres dis %e bres d %e bres pid %ld gres id %ld gres dis %e gres d %e gres pid %ld\n",tt,egap[tt].tt,tgap[egap[tt].tt].id,tgap[egap[tt].tt].d,tgap[egap[tt].tt].peak_index,(*bt)[egap[tt].idxA].id,egap[tt].disA,(*bt)[egap[tt].disA].d,(*bt)[egap[tt].disA].peak_index,tgap[egap[tt].idxg].id,egap[tt].disg,tgap[egap[tt].idxg].d,tgap[egap[tt].idxg].peak_index);
+                  }
+
+                  ei = std::remove_if(egap.begin(),egap.end(),edgeg_pid_assigned);
+                  egap.resize( std::distance(egap.begin(), ei) );
+
+                  /*
+                  //let's resort and remove unassigned tracers
+                  std::sort(egap.begin(),egap.end(),edgeg_pid_sort);
+
+                  //remove tracers assigned to a peak
+                  for(tt=0;tt<egap.size();tt++)
+                    if(egap[tt].pid!=-1)
+                     break;
+
+                  //remove assigned tracers
+                  egap.erase(egap.begin()+tt,egap.end());
+                  */
+
+                }//while(egap.size()>0)
+
 
                 //OK, now we have to find all of the tracers
                 //in the tgap array in tbuf, and update their
@@ -722,7 +790,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   tstmp.push_back(tbuf[tt]);
 
 
-                  if(tbuf[tt].id==5708317&&ss==286)
+//                  if(tbuf[tt].id==5708317&&ss==286)
+                  if(t[s[ss].o+tt].id==294744)
                   {
                     printf("PRESENT E in tstmp ss %ld\n",ss);
                     //exit(-1);
@@ -806,7 +875,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   tstmp.push_back(tbuf[tt]);
 
 
-                  if(tbuf[tt].id==5708317&&ss==286)
+//                  if(tbuf[tt].id==5708317&&ss==286)
+                  if(t[s[ss].o+tt].id==294744)
                   {
                     printf("PRESENT E in tstmp but tgap==0 ss %ld\n",ss);
                     //exit(-1);
@@ -881,7 +951,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               for(tt=0;tt<tbuf.size();tt++)
               {
-                if(tbuf[tt].id==5708317)
+  //              if(tbuf[tt].id==5708317)
+                if(t[s[ss].o+tt].id==294744)
                 {
                   printf("PRESENT F ss %ld\n",ss);
                   //exit(-1);
@@ -1033,7 +1104,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               for(tt=0;tt<tunion.size();tt++)
               {
-                if(tunion[tt].id==5708317&&ss==286)
+                //if(tunion[tt].id==5708317&&ss==286) 
+                if(t[s[ss].o+tt].id==294744)
                 {
                   printf("PRESENT F IN UNION ss %ld\n",ss);
                   //exit(-1);
@@ -1042,7 +1114,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               for(tt=0;tt<tbuf.size();tt++)
               {
-                if(tbuf[tt].id==5708317&&ss==286)
+//                if(tbuf[tt].id==5708317&&ss==286)
+                if(t[s[ss].o+tt].id==294744)
                 {
                   printf("PRESENT F IN tbuf ss %ld\n",ss);
                   //exit(-1);
@@ -1440,7 +1513,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         if(tt!=0)
           printf("tt-1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-1,t[tt-1].id,t[tt-1].peak_index,tfinal[tt-1].id,tfinal[tt-1].peak_index);
         printf("tt   %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt,t[tt].id,t[tt].peak_index,tfinal[tt].id,tfinal[tt].peak_index);
-        printf("tt+1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+1,t[tt+1].id,t[tt+1].peak_index,tfinal[tt+1].id,tfinal[tt+1].peak_index);
+        printf("tt+1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+1,t[tt+1].id,t[tt+1].peak_index,tfinal[tt+1].id,tfinal[tt+1].peak_index);         
+        printf("tt+2 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+2,t[tt+2].id,t[tt+2].peak_index,tfinal[tt+2].id,tfinal[tt+2].peak_index);         
+        printf("tt+3 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+3,t[tt+3].id,t[tt+3].peak_index,tfinal[tt+3].id,tfinal[tt+3].peak_index);
+        printf("tt+4 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+4,t[tt+4].id,t[tt+4].peak_index,tfinal[tt+4].id,tfinal[tt+4].peak_index);
+
         break;
       }
     }
