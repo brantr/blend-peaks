@@ -624,15 +624,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                     if(egap[tt].pid!=-1)
                      break;
 
-                  printf("BEFORE egap.pid %ld egap.size() %ld\n",egap[tt].pid,egap.size());
+                  //remove assigned tracers
                   egap.erase(egap.begin()+tt,egap.end());
-                  if(egap.size()>0)
-                  {
-                    printf("AFTER egap.pid %ld egap.size() %ld\n",egap[egap.size()-1].pid,egap.size());
-                  }else{
-                    printf("AFTER egap.pid %ld egap.size() %ld\n",-1,pid,egap.size());
-                  }
-
                 }//while(egap.size()>0)
 
                 //OK, now we have to find all of the tracers
@@ -655,7 +648,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
                 }//tgap.size()
 
-                //resort tbuf
+                //re-sort tbuf
                 std::sort(tbuf.begin(),tbuf.end(),tracer_pid_and_density_and_id_sort);
 
                 //we can append these shocks to 
@@ -708,6 +701,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
                     //update pid
                     pid = tbuf[tt+1].peak_index;
+                  }
+
+                  if(pid==-1)
+                  {
+                    printf("ERROR pid -1\n");
+                    exit(-1);
                   }
                 }//loop over tbuf
 
