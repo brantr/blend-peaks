@@ -211,13 +211,21 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   vector<long>::iterator il;
 
   printf("Blending peaks (bs %ld s %ld t %ld)..\n",bs->size(),s.size(),t.size());
+
+  //verify that tracers in t are unique
+
   for(tt=0;tt<t.size();tt++)
   	lcheck.push_back(t[tt].id);
   std::sort(lcheck.begin(), lcheck.end());
   il = std::unique(lcheck.begin(), lcheck.end());
   lcheck.resize( std::distance(lcheck.begin(), il) );
+  if(lcheck.size()!=t.size())
+  {
+    printf("*********** lcheck.size() %ld t.size() %ld\n",lcheck.size(),t.size());
+    exit(-1);
 
-  printf("*********** lcheck.size() %ld t.size() %ld\n",lcheck.size(),t.size());
+  }
+
   //cin.get();
 
   //#error The particles are actually lost. sum s.l == t.size(), all t are unique.
@@ -247,9 +255,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         tbuf.push_back(t[s[ss].o+tt]);
 
         //if(t[s[ss].o+tt].id==5708317)
-        if(t[s[ss].o+tt].id==294744)
+        if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
         {
-          printf("PRESENT A ss %ld\n",ss);
+          printf("PRESENT A pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
           //exit(-1);
         }
       }
@@ -319,11 +327,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           interactions.push_back(ssb);
       }
 
-      if(interactions.size()>0)
-      {
-        printf("Shock %ld %10ld***************\n",ss,s[ss].id);
-        printf("Shock = %6ld (l=%6ld; id=%10ld; d=%e), number of interactions = %ld\n",ss,s[ss].l,s[ss].id,s[ss].d,interactions.size());
-      }
+      printf("Shock %ld %10ld***************\n",ss,s[ss].id);
+      printf("Shock = %6ld (l=%6ld; id=%10ld; d=%e), number of interactions = %ld\n",ss,s[ss].l,s[ss].id,s[ss].d,interactions.size());
+      
 
       //if there are no interactions, this is a new peak
       //this is the easiest case, add shock to sappend
@@ -344,9 +350,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             printf("PRESENT B ss %ld\n",ss);
             exit(-1);
           }*/
-          if(t[s[ss].o+tt].id==294744)
+          if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
           {
-            printf("PRESENT B ss %ld\n",ss);
+  //          printf("PRESENT B ss %ld\n",ss);
+            printf("PRESENT B pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
+
           }
 
         }
@@ -370,6 +378,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           tappend.push_back(tbuf[tt]);
 
         //printf("Added shock properties ss %ld l %10ld o %10ld d %e id %10ld\n",ss,s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+        printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+
 
         //destroy tracer buffer
         vector<tracer>().swap(tbuf);
@@ -406,10 +416,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           {
             tbuf.push_back(t[s[ss].o+tt]);
   //          if(t[s[ss].o+tt].id==5708317)
-            if(t[s[ss].o+tt].id==294744)
+            if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
             {
               printf("PRESENT C ss %ld\n",ss);
-              exit(-1);
+              //exit(-1);
             }
           }
           for(tt=0;tt<(*bs)[i].l;tt++)
@@ -508,9 +518,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             tbuf.push_back(t[s[ss].o+tt]);
             tbuf[tt].peak_index = -1;
 //            if(t[s[ss].o+tt].id==5708317)
-            if(t[s[ss].o+tt].id==294744)
+            if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
             {
-              printf("PRESENT D ss %ld\n",ss);
+//              printf("PRESENT D ss %ld\n",ss);
+              printf("PRESENT D pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
+
               //exit(-1);
             }
           }
@@ -561,9 +573,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               for(tt=0;tt<tbuf.size();tt++)
               {
 //                if(tbuf[tt].id==5708317)
-                if(t[s[ss].o+tt].id==294744)
+                if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                 {
-                  printf("PRESENT E ss %ld\n",ss);
+    //              printf("PRESENT E ss %ld\n",ss);
+                  printf("PRESENT E pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
+
                   //exit(-1);
                 }
                 //check the location of the particle
@@ -579,9 +593,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 {
 
 //                  if(tbuf[tt].id==5708317&&ss==286)
-                  if(t[s[ss].o+tt].id==294744)
+                  if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                   {
-                    printf("PRESENT E in BT ss %ld pid %ld\n",ss,(*bt)[res[0].idx].peak_index);
+//                    printf("PRESENT E in BT ss %ld pid %ld\n",ss,(*bt)[res[0].idx].peak_index);
+                    printf("PRESENT E in BT pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
+
                     //exit(-1);
                   }
                   //assign to HDT
@@ -610,9 +626,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                 {
 
 //                  if(tgap[tt].id==5708317&&ss==286)
-                  if(t[s[ss].o+tt].id==294744)
+                  if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                   {
-                    printf("PRESENT E in gap ss %ld\n",ss);
+//                    printf("PRESENT E in gap ss %ld\n",ss);
+                    printf("PRESENT E in gap pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
+
                     //exit(-1);
                   }
                   tgap[tt].peak_index = -1; //reset 
@@ -714,8 +732,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   //printf("****\n");
 
                   neiter++;
-                  if(!(neiter%100))
-                    printf("iteration %d egap %ld\n",neiter,egap.size());
+                  //if(!(neiter%100))
+                    //printf("iteration %d egap %ld\n",neiter,egap.size());
 
                   //OK, let's continue
 
@@ -791,9 +809,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
 
 //                  if(tbuf[tt].id==5708317&&ss==286)
-                  if(t[s[ss].o+tt].id==294744)
+                  if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                   {
-                    printf("PRESENT E in tstmp ss %ld\n",ss);
+//                    printf("PRESENT E in tstmp ss %ld\n",ss);
+                    printf("PRESENT E in tstmp pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
+
                     //exit(-1);
                   }
 
@@ -847,6 +867,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   }
                 }//loop over tbuf
 
+                printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
 
 
                 //destroy tgap and egap
@@ -876,7 +897,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
 
 //                  if(tbuf[tt].id==5708317&&ss==286)
-                  if(t[s[ss].o+tt].id==294744)
+                  if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                   {
                     printf("PRESENT E in tstmp but tgap==0 ss %ld\n",ss);
                     //exit(-1);
@@ -925,6 +946,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   }
                 }//end loop over tbuf
               }
+              printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+
 
               //Done!
 
@@ -952,7 +975,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               for(tt=0;tt<tbuf.size();tt++)
               {
   //              if(tbuf[tt].id==5708317)
-                if(t[s[ss].o+tt].id==294744)
+                if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                 {
                   printf("PRESENT F ss %ld\n",ss);
                   //exit(-1);
@@ -1105,9 +1128,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               for(tt=0;tt<tunion.size();tt++)
               {
                 //if(tunion[tt].id==5708317&&ss==286) 
-                if(t[s[ss].o+tt].id==294744)
+                if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                 {
-                  printf("PRESENT F IN UNION ss %ld\n",ss);
+                  //printf("PRESENT F IN UNION ss %ld\n",ss);
+                  printf("PRESENT F in UNION pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
+
                   //exit(-1);
                 }
               }
@@ -1115,9 +1140,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               for(tt=0;tt<tbuf.size();tt++)
               {
 //                if(tbuf[tt].id==5708317&&ss==286)
-                if(t[s[ss].o+tt].id==294744)
+                if((tbuf[tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                 {
-                  printf("PRESENT F IN tbuf ss %ld\n",ss);
+                  //printf("PRESENT F IN tbuf ss %ld\n",ss);
+                  printf("PRESENT F in tbuf pid %ld ss %ld s.id %ld\n",tbuf[tt].id,ss,s[ss].id);
+
                   //exit(-1);
                 }
               }
@@ -1135,6 +1162,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               flag_box_fail = 1;
               //printf("BOX FAIL %d\n",flag_box_fail);
               //exit(-1);
+              printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
 
 
             }
@@ -1170,6 +1198,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             smerge.push_back(sbuf);
             for(tt=0;tt<sbuf.l;tt++) //ADDTMERGE
               tmerge.push_back(tbuf[tt]);
+            
+            printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+
           }
           
                     
@@ -1466,9 +1497,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     if(ss<scomp.size())
     {
       sbufB = scomp[ss];
-      printf("ss %6ld l %6ld o %6ld d %e id %ld\t\tPREV ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id,ss,sbufB.l,sbufB.o,sbufB.d,sbufB.id);
+      printf("ss %6ld l %6ld o %6ld d %e id %10ld\t\tPREV ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id,ss,sbufB.l,sbufB.o,sbufB.d,sbufB.id);
     }else{
-      printf("ss %6ld l %6ld o %6ld d %e id %ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+      printf("ss %6ld l %6ld o %6ld d %e id %10ld\n",ss,sbuf.l,sbuf.o,sbuf.d,sbuf.id);
     }
 
     if(ss>0)
@@ -1494,6 +1525,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //seems ok
   //if(flag_box_fail)
     //exit(-1);
+  for(tt=0;tt<tfinal.size();tt++)
+    if((tfinal[tt].id==294744)||(tfinal[tt].id==16470779)||(tfinal[tt].id==43349505)||(tfinal[tt].id==22663579))
+     printf("tt   %ld t id %ld peak_index %ld d %e\n",tt,tfinal[tt].id,tfinal[tt].peak_index,tfinal[tt].d);
+
 
   //LENGTH CHECK
   //all the particles in t should be in tfinal
@@ -1506,12 +1541,20 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     std::sort(t.begin(), t.end(), tracer_id_sort);
     std::sort(tfinal.begin(),tfinal.end(),tracer_id_sort);
 
+    for(ss=0;ss<s.size();ss++)
+    {
+      if((s[ss].id==16470779)||(s[ss].id==22663579)||(s[ss].id==65341979))
+      {
+        printf("ss %ld s.id %ld s.l %ld s.d %e\n",ss,s[ss].id,s[ss].l,s[ss].d);
+      }
+    }
+
     for(tt=0;tt<t.size()-1;tt++)
     {
       if(t[tt].id!=tfinal[tt].id)
       {
-        if(tt!=0)
-          printf("tt-1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-1,t[tt-1].id,t[tt-1].peak_index,tfinal[tt-1].id,tfinal[tt-1].peak_index);
+        printf("tt-2 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-2,t[tt-2].id,t[tt-2].peak_index,tfinal[tt-2].id,tfinal[tt-2].peak_index);
+        printf("tt-1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-1,t[tt-1].id,t[tt-1].peak_index,tfinal[tt-1].id,tfinal[tt-1].peak_index);
         printf("tt   %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt,t[tt].id,t[tt].peak_index,tfinal[tt].id,tfinal[tt].peak_index);
         printf("tt+1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+1,t[tt+1].id,t[tt+1].peak_index,tfinal[tt+1].id,tfinal[tt+1].peak_index);         
         printf("tt+2 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+2,t[tt+2].id,t[tt+2].peak_index,tfinal[tt+2].id,tfinal[tt+2].peak_index);         
