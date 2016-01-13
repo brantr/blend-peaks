@@ -390,16 +390,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       if(interactions.size()>0)
       {
 
-        //if there is only one interaction, the shock
+        //if there is only one interaction and the peak is the same, the shock
         //just needs to be expanded.  Let's get some info
 
         //note for *one* interaction, the peak with the lower
-        //density threshold has to be the same as the previously
-        //identified peak.  We don't need to be any more careful.
-        //note that texpand and sexpand contain the lists of the
+        //density threshold is usually to be the same as the previously
+        //identified peak.  Then, texpand and sexpand contain the lists of the
         //simply grown shocks
 
-        if(interactions.size()==1)
+        if((interactions.size()==1)&&((s[ss].id==(*bs)[interactions[0]].id)||(s[ss].d==(*bs)[interactions[0]].d)) )
         {
           //some simple checking
       	  pcount += s[ss].l;
@@ -415,12 +414,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           for(tt=0;tt<s[ss].l;tt++)
           {
             tbuf.push_back(t[s[ss].o+tt]);
-  //          if(t[s[ss].o+tt].id==5708317)
-            if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
-            {
-              printf("PRESENT C ss %ld\n",ss);
-              //exit(-1);
-            }
           }
           for(tt=0;tt<(*bs)[i].l;tt++)
             tbuf.push_back((*bt)[(*bs)[i].o+tt]);
@@ -459,8 +452,65 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
           printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
 
-        }//end interactions==1
+        //}else if((interactions.size()==1)&&(s[ss].d<(*bs)[interactions[0]].d)){
+        }else if(interactions.size()==1){
 
+          //proximate shocks with different peaks
+          //so we need to add ss as if interactions==0
+          //TESTING
+
+          i = interactions[0];
+          printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
+          printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
+          printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
+          printf("LDT shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+
+          //some simple checking
+          pcount += s[ss].l;
+
+          //Put tracers into a buffer
+          for(tt=0;tt<s[ss].l;tt++)
+          {
+            tbuf.push_back(t[s[ss].o+tt]);
+          }
+      
+          //sort tracers by density, then id
+          std::sort(tbuf.begin(), tbuf.end(), tracer_density_and_id_sort);
+
+          //set peak index
+          for(tt=0;tt<tbuf.size();tt++)
+            tbuf[tt].peak_index = tbuf[0].id;
+
+          //reset shock peak index
+          s[ss].id = tbuf[0].id;
+
+          //set the peak box
+          set_peak_box(&s[ss], tbuf);
+
+          //append shock and tracers to the append lists
+          sappend.push_back(s[ss]);
+          for(tt=0;tt<s[ss].l;tt++)
+            tappend.push_back(tbuf[tt]);
+
+          //printf("Added shock properties ss %ld l %10ld o %10ld d %e id %10ld\n",ss,s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+          printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+
+          //destroy tracer buffer
+          vector<tracer>().swap(tbuf);
+
+        }
+/*
+        else if(interactions.size()==1){
+          i = interactions[0];
+          printf("THIRD CASE\n");
+          printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
+          printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
+          printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
+          printf("LDT shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+
+          exit(-1);
+        }//end interactions = 1
+*/
 
         //if a shock has more than one interaction
         //enter this conditional. If this is turned off,
@@ -1388,6 +1438,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //OK, now sort skeep based on density
   std::sort(skeep.begin(), skeep.end(), shock_density_sort);
 
+  //there is a pathological case where
+#error deal with case where a proximate equal density peak appears in int=1, 
+#error but you've already enshrined this peak and so it's duplicated in 
+#error the interactions==1 case previously.
 
   //Store the tracers in blended shocks
   tt=0;
