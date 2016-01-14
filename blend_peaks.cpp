@@ -497,7 +497,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
           //reset shock peak index
           s[ss].id = tbuf[0].id;
-<<<<<<< HEAD
 
           //set the peak box
           set_peak_box(&s[ss], tbuf);
@@ -514,45 +513,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           vector<tracer>().swap(tbuf);
 
         }
-/*
-        else if(interactions.size()==1){
-          i = interactions[0];
-          printf("THIRD CASE\n");
-          printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
-          printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
-          printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
-          printf("LDT shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
-
-=======
-
-          //set the peak box
-          set_peak_box(&s[ss], tbuf);
-
-          //append shock and tracers to the append lists
-          sappend.push_back(s[ss]);
-          for(tt=0;tt<s[ss].l;tt++)
-            tappend.push_back(tbuf[tt]);
-
-          //printf("Added shock properties ss %ld l %10ld o %10ld d %e id %10ld\n",ss,s[ss].l,s[ss].o,s[ss].d,s[ss].id);
-          printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
-
-          //destroy tracer buffer
-          vector<tracer>().swap(tbuf);
-
-        }
-/*
-        else if(interactions.size()==1){
-          i = interactions[0];
-          printf("THIRD CASE\n");
-          printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
-          printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
-          printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
-          printf("LDT shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
-
->>>>>>> origin/master
-          exit(-1);
-        }//end interactions = 1
-*/
 
         //if a shock has more than one interaction
         //enter this conditional. If this is turned off,
@@ -1067,12 +1027,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               for(tt=0;tt<tbuf.size();tt++)
               {
   //              if(tbuf[tt].id==5708317)
-<<<<<<< HEAD
                 //if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                 if(tbuf[tt].id==1626042)
-=======
-                if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
->>>>>>> origin/master
                 {
                   printf("PRESENT F tt %ld ss %ld s.id %ld\n",tt,ss,s[ss].id);
                   //exit(-1);
@@ -1092,8 +1048,16 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               printf("OVERLAP size is %ld\n",toverlap.size());
 
-              for(tt=0;tt<toverlap.size();tt++)
-                printf("tt %ld id %ld d %e\n",tt,toverlap[tt].id,toverlap[tt].d);
+              //if(toverlap.size()>0)
+              if(0)
+              {
+                for(tt=0;tt<toverlap.size();tt++)
+                  printf("overlap tt %ld id %ld d %e\n",tt,toverlap[tt].id,toverlap[tt].d);
+
+                for(tt=0;tt<(*bs)[i].l;tt++)
+                  printf("bs tt %ld id %ld d %e\n",tt,(*bt)[(*bs)[i].o+tt].id,(*bt)[(*bs)[i].o+tt].d);
+
+              }
 
               //do a unique comparison on the tracer ids
               it = std::unique(tunion.begin(), tunion.end(), tracer_unique);
@@ -1175,6 +1139,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //dense peak based on the FOF search radius
               //Add to tcorr or tcorr_lowd accordingly.
               printf("BEFORE tcorr.size() %ld tcorr_lowd.size() %ld\n",tcorr.size(),tcorr_lowd.size());
+
+              //we can only change the LDT, so
+              //remove the overlap from it
+              /*
               for(tt=0;tt<toverlap.size();tt++)
               {
                 //create the query vector
@@ -1198,11 +1166,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   tcorr_lowd.push_back(toverlap[tt]);
                 }
               }
+              */
               printf("AFTER  tcorr.size() %ld tcorr_lowd.size() %ld\n",tcorr.size(),tcorr_lowd.size());
 
-              if(tcorr.size()+tcorr_lowd.size()!=tunion.size())
+              //if(tcorr.size()+tcorr_lowd.size()!=tunion.size())
+              if((*bs)[i].l + tcorr_lowd.size()!=tunion.size())
               {
-                printf("ERROR LOST PARTICLE  tcorr.size() %ld tcorr_lowd.size() %ld tunion.size() %ld\n",tcorr.size(),tcorr_lowd.size(),tunion.size());
+                //printf("ERROR LOST PARTICLE  tcorr.size() %ld tcorr_lowd.size() %ld tunion.size() %ld\n",tcorr.size(),tcorr_lowd.size(),tunion.size());
+                printf("ERROR LOST PARTICLE  (*bs).l %ld tcorr_lowd.size() %ld tunion.size() %ld\n",(*bs)[i].l,tcorr_lowd.size(),tunion.size());
+
                 fflush(stdout);
                 exit(-1);
               }
@@ -1219,11 +1191,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //we need to replace tbuf with tcorr_lowd
 
               printf("Replacing tbuf.size() %ld with tcorr_lowd.size() %ld\n",tbuf.size(),tcorr_lowd.size());
-              if(tbuf.size()!=tcorr_lowd.size())
-              {
-              	printf("BOX FAIL\n");
-              	exit(-1);
-              }
+
               
               vector<tracer>().swap(tbuf);
               it = tbuf.end();
@@ -1246,13 +1214,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               for(tt=0;tt<tunion.size();tt++)
               {
-                //if(tunion[tt].id==5708317&&ss==286) 
-<<<<<<< HEAD
-//                if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
+
                 if(tunion[tt].id==1626042)
-=======
-                if((t[s[ss].o+tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
->>>>>>> origin/master
                 {
                   //printf("PRESENT F IN UNION ss %ld\n",ss);
                   printf("PRESENT F in UNION pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
@@ -1264,12 +1227,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               for(tt=0;tt<tbuf.size();tt++)
               {
 //                if(tbuf[tt].id==5708317&&ss==286)
-<<<<<<< HEAD
                 //if((tbuf[tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
                 if(tbuf[tt].id==1626042)
-=======
-                if((tbuf[tt].id==294744)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
->>>>>>> origin/master
                 {
                   //printf("PRESENT F IN tbuf ss %ld\n",ss);
                   printf("PRESENT F in tbuf pid %ld ss %ld s.id %ld\n",tbuf[tt].id,ss,s[ss].id);
@@ -1279,7 +1238,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               }
               //destroy ttest
               vector<tracer>().swap(tunion);
-              vector<tracer>().swap(toverlap);
               vector<tracer>().swap(tunion);
               vector<tracer>().swap(tcorr);
               vector<tracer>().swap(tcorr_lowd);
@@ -1293,6 +1251,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //exit(-1);
               printf("Blended shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
 
+              //if(toverlap.size()>0)
+              //  exit(-1);
+
+              //destroy toverlap, which was kept for testing
+              vector<tracer>().swap(toverlap);
 
             }
 
@@ -1376,6 +1339,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //texpand is only interactions == 1
   //tmerge  is only interactions >  1
 
+  //problem is with 27158540, which is where the 1467809 peak splits
+  //the tcorr size without the overlap is the size of 27158540, which should
+  //be 1467809
+
   printf("SIZES of tmerge %ld tappend %ld texpand %ld\n",tmerge.size(),tappend.size(),texpand.size());
 
   //so we need to combine into a buffer
@@ -1396,6 +1363,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   for(tt=0;tt<texpand.size();tt++)
     tstore.push_back(texpand[tt]);
 
+  //should be able to sort by id, keep unique, then sort
+  //by peak index then density then id, and reconstruct 
+  //s
+
   //fix offsets
   sstore[0].o = 0;
   for(ss=1;ss<sstore.size();ss++)
@@ -1406,6 +1377,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
   //sort shocks by peak id
   std::sort(sstore.begin(), sstore.end(), shock_id_sort);
+
+  long nctot = 0;
+  for(ss = 0;ss<sstore.size();ss++)
+  {
+    printf("SHOCK ID LIST ss %ld id %ld l %ld o %ld\n",ss,sstore[ss].id,sstore[ss].l,sstore[ss].o);
+    nctot += sstore[ss].l;
+  }
+  printf("TOTAL in SHOCK LIST = %ld\n",nctot);
 
   vector<shock>  skeep;
   vector<tracer> tkeep;
@@ -1479,7 +1458,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   for(ss=0;ss<skeep.size();ss++)
   {
     //correct skeep
-    //printf("SKEEP ss %ld l %6ld o %6ld id %10ld d %e\n",ss,skeep[ss].l,skeep[ss].o,skeep[ss].id,skeep[ss].d);
+    printf("SKEEP ss %ld l %6ld o %6ld id %10ld d %e\n",ss,skeep[ss].l,skeep[ss].o,skeep[ss].id,skeep[ss].d);
 
     //first, put the tracers from
     //this shock into a buffer
@@ -1505,7 +1484,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
     //put tbuf in tfinal
     for(tt=0;tt<tfbuf.size();tt++)
+    { 
+      if(tfbuf[tt].id==1626042 || tfbuf[tt].peak_index==1467809)
+        printf("TBUF INTO FINAL tt %ld id %ld peak_index %ld d %e\n",tt,tfbuf[tt].id,tfbuf[tt].peak_index,tfbuf[tt].d);
       tfinal.push_back(tfbuf[tt]);
+    }
 
     //correct skeep length
     skeep[ss].l = tfbuf.size();
@@ -1535,6 +1518,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 //#error deal with case where a proximate equal density peak appears in int=1, 
 //#error but you've already enshrined this peak and so it's duplicated in 
 //#error the interactions==1 case previously.
+
+  //what does skeep look like now?
+  for(ss=0;ss<skeep.size();ss++)
+    printf("MAKING TFINAL ss %ld skeep.id %ld skeep.o %ld skeep.e %e\n",ss,skeep[ss].id,skeep[ss].o,skeep[ss].d);
+
 
   //Store the tracers in blended shocks
   tt=0;
@@ -1683,6 +1671,18 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   {
     printf("LENGTH ERROR LOST TRACERS t.size %ld tfinal.size() %ld\n",t.size(),tfinal.size());
 
+    for(tt=0;tt<tfinal.size();tt++)
+    {
+      if(tt<tfinal.size()-1)
+        if(tfinal[tt].peak_index!=1467809)
+          if(tfinal[tt+1].peak_index == 1467809)
+            printf("BEFORE LIST tt   %ld t id %ld peak_index %ld d %e\n",tt,tfinal[tt].id,tfinal[tt].peak_index,tfinal[tt].d);
+
+      if(tfinal[tt].peak_index == 1467809)
+        printf("LIST tt   %ld t id %ld peak_index %ld d %e\n",tt,tfinal[tt].id,tfinal[tt].peak_index,tfinal[tt].d);
+    }
+
+
     //OK, we have a problem.  Let's sort both t and tfinal by tracer ID
     //then we can search and identify what is missing.
     std::sort(t.begin(), t.end(), tracer_id_sort);
@@ -1710,6 +1710,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
         break;
       }
+
     }
     //5708317 is missing
 
