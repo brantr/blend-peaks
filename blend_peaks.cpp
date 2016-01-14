@@ -215,7 +215,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //verify that tracers in t are unique
 
   for(tt=0;tt<t.size();tt++)
+  {
   	lcheck.push_back(t[tt].id);
+	if(t[tt].id==1626042)
+	  printf("tt %ld id %ld\n",tt,t[tt].id);
+  }
   std::sort(lcheck.begin(), lcheck.end());
   il = std::unique(lcheck.begin(), lcheck.end());
   lcheck.resize( std::distance(lcheck.begin(), il) );
@@ -398,12 +402,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         //identified peak.  Then, texpand and sexpand contain the lists of the
         //simply grown shocks
 
-        if((interactions.size()==1)&&((s[ss].id==(*bs)[interactions[0]].id)||(s[ss].d==(*bs)[interactions[0]].d)) )
+        if((interactions.size()==1)&&(s[ss].id==(*bs)[interactions[0]].id) )
+        //if((interactions.size()==1)&&((s[ss].id==(*bs)[interactions[0]].id)||(s[ss].d==(*bs)[interactions[0]].d)) )
         {
           //some simple checking
       	  pcount += s[ss].l;
 
           i = interactions[0];
+          printf("EXPANDING:\n");
           printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
           printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
           printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
@@ -440,6 +446,13 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           for(tt=0;tt<tbuf.size();tt++)
             tbuf[tt].peak_index = sbuf.id;
 
+	//CHECL
+	  if(sbuf.id==1467809)
+	{
+		for(tt=0;tt<tbuf.size();tt++)
+			printf("tt %ld id %ld d %e\n",tt,tbuf[tt].id,tbuf[tt].d);
+	}
+
           //append tbuf to texpand
           it = texpand.end();
           texpand.insert(it,tbuf.begin(),tbuf.end());
@@ -460,6 +473,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           //TESTING
 
           i = interactions[0];
+          printf("PROXIMATE\n");
           printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
           printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
           printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
@@ -1261,6 +1275,20 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
 
       }//end interactions>0
+/*
+      //check pathological case
+      if(ss<s.size()-1)
+      {
+        if(s[ss+1].d==s[ss].d && box_collision(s[ss].min,s[ss].max,s[ss+1].min,s[ss+1].max))
+        {
+          printf("PATHOLOGY ss %ld id %ld d %e ss+1 %ld id %ld d %e\n",ss,s[ss].id,s[ss].d,ss+1,s[ss+1].id,s[ss+1].d);
+
+
+
+        }
+
+      }
+*/
 
       //destroy the interaction list
       vector<int>().swap(interactions);
@@ -1439,9 +1467,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   std::sort(skeep.begin(), skeep.end(), shock_density_sort);
 
   //there is a pathological case where
-#error deal with case where a proximate equal density peak appears in int=1, 
-#error but you've already enshrined this peak and so it's duplicated in 
-#error the interactions==1 case previously.
+//#error deal with case where a proximate equal density peak appears in int=1, 
+//#error but you've already enshrined this peak and so it's duplicated in 
+//#error the interactions==1 case previously.
 
   //Store the tracers in blended shocks
   tt=0;
