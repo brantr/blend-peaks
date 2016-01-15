@@ -1492,7 +1492,30 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
 
   printf("skeep.size() %ld tkeep.size() %ld t.size() %ld\n",skeep.size(),tkeep.size(),t.size());
-  exit(-1);
+  //exit(-1);
+
+  //reset bounding boxes
+  for(ss=0;ss<skeep.size();ss++)
+  {
+    for(int k=0;k<3;k++)
+    {
+      skeep[ss].min[k] =  1.0e9;
+      skeep[ss].max[k] = -1.0e9;
+    }
+
+    for(tt=skeep[ss].o;tt<skeep[ss].o+skeep[ss].l;tt++)
+    {
+      for(int k=0;k<3;k++)
+      {
+        if(tkeep[tt].x[k]<skeep[ss].min[k])
+          skeep[ss].min[k] = tkeep[tt].x[k];
+        if(tkeep[tt].x[k]>skeep[ss].max[k])
+          skeep[ss].max[k] = tkeep[tt].x[k];
+      }
+    }
+  }
+
+  //should be able to store and move on.
 
 
             sbuf.o = 0;
