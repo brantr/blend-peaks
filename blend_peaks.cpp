@@ -13,6 +13,34 @@ struct edgeg
   float disg;
   long pid;
 };
+struct tracer_key
+{
+  long  idx;
+  float peak_density;
+  long  peak_index;
+  long  id;
+  float d;
+};
+bool tracer_key_sort(tracer_key a, tracer_key b)
+{
+  if(a.peak_density==b.peak_density)
+  {
+    if(a.peak_index==b.peak_index)
+    {
+      if(a.d==b.d)
+      {
+        return (a.id<b.id);
+
+      }else{
+        return (a.d > b.d);
+      }
+    }else{
+      return (a.peak_index < b.peak_index);
+    }
+  }else{
+    return (a.peak_density>b.peak_density);
+  }
+}
 bool edgeg_pid_sort(edgeg a, edgeg b)
 {
   return (a.pid<b.pid);
@@ -1366,6 +1394,110 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //should be able to sort by id, keep unique, then sort
   //by peak index then density then id, and reconstruct 
   //s
+  //but we need to know the index of the peaks
+  std::sort(tstore.begin(), tstore.end(), tracer_id_sort);
+
+  it = std::unique(tstore.begin(), tstore.end(), tracer_unique);
+  tstore.resize( std::distance(tstore.begin(), it) );
+
+  //here tstore is only unique objects
+  //loop, store peak_index, and then keep unique 
+  //peak indices
+  vector<long> pidlist;
+  vector<long>::iterator pidi;
+  for(tt=0;tt<tstore.size();tt++)
+    pidlist.push_back(tstore[tt].peak_index);
+
+  std::sort(pidlist.begin(),pidlist.end());
+  pidi = std::unique(pidlist.begin(), pidlist.end());
+  pidlist.resize( std::distance(pidlist.begin(), pidi) );
+
+  printf("pidlist.size() %ld\n",pidlist.size());
+
+  //pidlist contains a sorted list of unique peak indices
+  //in increasing order
+
+  //sort tracers by peak index
+  std::sort(tstore.begin(), tstore.end(), tracer_pid_and_density_and_id_sort);
+
+  vector<float> peak_densities;
+  long pt = 0;
+  peak_densities.push_back(tstore[0].d);
+  for(tt=1;tt<tstore.size();tt++)
+    if(tstore[tt].peak_index!=pidlist[pt])
+    {
+      peak_densities.push_back(tstore[tt].d);
+      pt++;
+    }
+
+  printf("peak_densities.size() %ld\n",peak_densities.size());
+
+  vector<tracer_key> tkey;
+  tracer_key tkin;
+  vector<shock>  skeep;
+  vector<tracer> tkeep;
+
+  pt = 0;
+  for(tt=0;tt<tstore.size();tt++)
+  {
+    if(tstore[tt].peak_index!=pidlist[pt])
+      pt++;
+    tkin.idx = tt;
+    tkin.peak_density = peak_densities[pt];
+    tkin.peak_index   = tstore[tt].peak_index;
+    tkin.d            = tstore[tt].d;
+    tkin.id           = tstore[tt].id;
+
+    if(tt==0)
+      printf("tt %ld id %ld peak_index %ld id %ld d %e | pt %ld pid %ld pd %e\n",tt,tkin.id,tkin.peak_index,tkin.id,tkin.d,pt, pidlist[pt],peak_densities[pt]);
+    tkey.push_back(tkin);
+  }
+
+  std::sort(tkey.begin(),tkey.end(), tracer_key_sort);
+
+  //make tkeep, sorting by peak density, peak index, density, index
+  for(tt=0;tt<tkey.size();tt++)
+    tkeep.push_back(tstore[tkey[tt].idx]);
+
+  printf("tkeep[0] id %ld peak_index %ld d %e\n",tkeep[0].id,tkeep[0].peak_index,tkeep[0].d);
+  //make skeep
+  long offset = 0;
+  sbuf.d  = tkeep[0].d;
+  sbuf.id = tkeep[0].id;
+  sbuf.o  = offset;
+  sbuf.l  = 1;
+
+  for(tt=1;tt<tkeep.size();tt++)
+  {
+    if(tkeep[tt].peak_index!=sbuf.id)
+    {
+      offset += sbuf.l;
+      skeep.push_back(sbuf);
+
+      sbuf.d  = tkeep[tt].d;
+      sbuf.id = tkeep[tt].id;
+      sbuf.l  = 0;
+      sbuf.o  = offset;
+    }
+    sbuf.l++;
+  }
+  skeep.push_back(sbuf);
+  long nctot = 0;
+  for(ss = 0;ss<skeep.size();ss++)
+  {
+    printf("SHOCK ID LIST ss %ld id %ld l %ld o %ld d %e | pid %ld d %e\n",ss,skeep[ss].id,skeep[ss].l,skeep[ss].o,skeep[ss].d,tkeep[skeep[ss].o].id,tkeep[skeep[ss].o].d);
+    nctot += skeep[ss].l;
+  }
+  printf("TOTAL in SHOCK LIST = %ld\n",nctot);
+
+
+  printf("skeep.size() %ld tkeep.size() %ld t.size() %ld\n",skeep.size(),tkeep.size(),t.size());
+  exit(-1);
+
+
+            sbuf.o = 0;
+            sbuf.d = tbuf[0].d;
+            sbuf.id = tbuf[0].id;
 
   //fix offsets
   sstore[0].o = 0;
@@ -1378,18 +1510,71 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //sort shocks by peak id
   std::sort(sstore.begin(), sstore.end(), shock_id_sort);
 
-  long nctot = 0;
-  for(ss = 0;ss<sstore.size();ss++)
-  {
-    printf("SHOCK ID LIST ss %ld id %ld l %ld o %ld\n",ss,sstore[ss].id,sstore[ss].l,sstore[ss].o);
-    nctot += sstore[ss].l;
-  }
-  printf("TOTAL in SHOCK LIST = %ld\n",nctot);
 
-  vector<shock>  skeep;
-  vector<tracer> tkeep;
+
+
 
   //check for duplicates
+
+//  *****************************
+
+  //create tracer keys for sorting
+/*
+  vector<long> pidlist;
+  vector<long>::iterator pidi;
+  for(tt=0;tt<tstore.size();tt++)
+    pidlist.push_back(tstore[tt].peak_index);
+
+
+  vector<tracer_key> tkey;
+  vector<float>  skey;
+
+  shock_key skin;
+  for(ss=0;ss<sstore.size())
+
+  tracer_key tkin;
+  tt = 0;
+  for(ss=0;ss<sstore.size();ss++)
+  {
+    for(tt=sstore[ss].o;tt<sstore[ss].osstore[ss].l;tidx++)
+    tkin.idx = tt;
+    tkin.peak_density = tstore[tstore[tt].peak_idx].
+
+  }
+
+  //let's just make sure tstore reduces to t
+  //keep unique entries
+  std::sort(tstore.begin(), tstore.end(), tracer_id_sort);
+  it = std::unique(tstore.begin(), tstore.end(), tracer_unique);
+  tstore.resize( std::distance(tstore.begin(), it) );
+
+
+  //sort by peak, then density, then id
+  std::sort(tstore.begin(), tstore.end(), tracer_pid_and_density_and_id_sort);
+*/
+  //for(ss=0;ss<store.size();ss++)
+    //printf("SORTING SCHEME SS ss %ld id %ld d %e\n",ss,store[ss].id,store[ss].d);
+  //HEREHEREHERE
+
+  tt=0;
+  ss=0;
+  long llcheck=1;
+  printf("SORTING SCHEME TT tt %ld id %ld pid %ld d %e ss %ld l %ld o %ld llcheck %ld id %ld d %e\n",tt,tstore[tt].id,tstore[tt].peak_index,tstore[tt].d,ss,sstore[ss].l,sstore[ss].o,llcheck,sstore[ss].id,sstore[ss].d);
+  for(tt=1;tt<tstore.size();tt++)
+  {
+    if(tstore[tt].peak_index!=tstore[tt-1].peak_index)
+    {
+      ss++;
+      printf("SORTING SCHEME TT tt %ld id %ld pid %ld d %e ss %ld l %ld o %ld lcheck %ld id %ld d %e\n",tt,tstore[tt].id,tstore[tt].peak_index,tstore[tt].d,ss,sstore[ss].l,sstore[ss].o,llcheck,sstore[ss].id,sstore[ss].d);
+      llcheck = 0;
+    }else{
+      llcheck++;
+    }
+
+  }
+
+//exit(-1);
+//  *****************************
 
   //first, keep the first peak
   skeep.push_back(sstore[0]);
@@ -1419,11 +1604,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   printf("SIZES t %ld tkeep %ld tstore %ld\n",t.size(),tkeep.size(),tstore.size());
   //cin.get();
 
-  //let's just make sure tstore reduces to t
-  //keep unique entries
-  std::sort(tstore.begin(), tstore.end(), tracer_id_sort);
-  it = std::unique(tstore.begin(), tstore.end(), tracer_unique);
-  tstore.resize( std::distance(tstore.begin(), it) );
+
   printf("SECOND SIZES t %ld tkeep %ld tstore %ld\n",t.size(),tkeep.size(),tstore.size());
   //cin.get();
 
