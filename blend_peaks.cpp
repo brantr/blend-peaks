@@ -1170,7 +1170,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               //we can only change the LDT, so
               //remove the overlap from it
-              /*
+              
               for(tt=0;tt<toverlap.size();tt++)
               {
                 //create the query vector
@@ -1194,11 +1194,11 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   tcorr_lowd.push_back(toverlap[tt]);
                 }
               }
-              */
+              
               printf("AFTER  tcorr.size() %ld tcorr_lowd.size() %ld\n",tcorr.size(),tcorr_lowd.size());
 
-              //if(tcorr.size()+tcorr_lowd.size()!=tunion.size())
-              if((*bs)[i].l + tcorr_lowd.size()!=tunion.size())
+              if(tcorr.size()+tcorr_lowd.size()!=tunion.size())
+              //if((*bs)[i].l + tcorr_lowd.size()!=tunion.size())
               {
                 //printf("ERROR LOST PARTICLE  tcorr.size() %ld tcorr_lowd.size() %ld tunion.size() %ld\n",tcorr.size(),tcorr_lowd.size(),tunion.size());
                 printf("ERROR LOST PARTICLE  (*bs).l %ld tcorr_lowd.size() %ld tunion.size() %ld\n",(*bs)[i].l,tcorr_lowd.size(),tunion.size());
@@ -1391,6 +1391,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   for(tt=0;tt<texpand.size();tt++)
     tstore.push_back(texpand[tt]);
 
+  printf("BEFORE UNIQUE tstore.size() %ld t.size() %ld\n",tstore.size(),t.size());
+
   //should be able to sort by id, keep unique, then sort
   //by peak index then density then id, and reconstruct 
   //s
@@ -1399,6 +1401,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
   it = std::unique(tstore.begin(), tstore.end(), tracer_unique);
   tstore.resize( std::distance(tstore.begin(), it) );
+
+  printf("AFTER UNIQUE tstore.size() %ld t.size() %ld\n",tstore.size(),t.size());
 
   //here tstore is only unique objects
   //loop, store peak_index, and then keep unique 
@@ -1517,6 +1521,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
   //should be able to store and move on.
 
+/*
 
             sbuf.o = 0;
             sbuf.d = tbuf[0].d;
@@ -1533,7 +1538,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //sort shocks by peak id
   std::sort(sstore.begin(), sstore.end(), shock_id_sort);
 
-
+*/
 
 
 
@@ -1579,6 +1584,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     //printf("SORTING SCHEME SS ss %ld id %ld d %e\n",ss,store[ss].id,store[ss].d);
   //HEREHEREHERE
 
+/*
   tt=0;
   ss=0;
   long llcheck=1;
@@ -1726,22 +1732,31 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //what does skeep look like now?
   for(ss=0;ss<skeep.size();ss++)
     printf("MAKING TFINAL ss %ld skeep.id %ld skeep.o %ld skeep.e %e\n",ss,skeep[ss].id,skeep[ss].o,skeep[ss].d);
-
+*/
 
   //Store the tracers in blended shocks
+  /*
   tt=0;
   for(ss=0;ss<skeep.size();ss++)
     for(tt=skeep[ss].o;tt<skeep[ss].o+skeep[ss].l;tt++)
-      bt->push_back(tfinal[tt]);
+      bt->push_back(tkeep[tt]);
+      //bt->push_back(tfinal[tt]);
+*/
+
+
+  //Store the tracers in blended shocks
+  for(tt=0;tt<tkeep.size();tt++)
+    bt->push_back(tkeep[tt]);
   
 
-
+/*
   //fix offsets for the last time, after sorting tracers
   skeep[0].o = 0;
   for(ss=1;ss<skeep.size();ss++)
   {
     skeep[ss].o = skeep[ss-1].o + skeep[ss-1].l;
   }
+*/
   
   //put in shocks
   for(ss=0;ss<skeep.size();ss++)
@@ -1860,6 +1875,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     free(bs_tree);
   }
 
+/*
   //for debugging
   //seems ok
   //if(flag_box_fail)
@@ -1868,13 +1884,18 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     if((tfinal[tt].id==294744)||(tfinal[tt].id==16470779)||(tfinal[tt].id==43349505)||(tfinal[tt].id==22663579))
      printf("tt   %ld t id %ld peak_index %ld d %e\n",tt,tfinal[tt].id,tfinal[tt].peak_index,tfinal[tt].d);
 
+*/
+
 
   //LENGTH CHECK
   //all the particles in t should be in tfinal
-  if(t.size()!=tfinal.size())
+  //if(t.size()!=tfinal.size())
+  if(t.size()!=tkeep.size())
   {
-    printf("LENGTH ERROR LOST TRACERS t.size %ld tfinal.size() %ld\n",t.size(),tfinal.size());
+    //printf("LENGTH ERROR LOST TRACERS t.size %ld tfinal.size() %ld\n",t.size(),tfinal.size());
+    printf("LENGTH ERROR LOST TRACERS t.size %ld tfinal.size() %ld\n",t.size(),tkeep.size());
 
+/*
     for(tt=0;tt<tfinal.size();tt++)
     {
       if(tt<tfinal.size()-1)
@@ -1885,12 +1906,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       if(tfinal[tt].peak_index == 1467809)
         printf("LIST tt   %ld t id %ld peak_index %ld d %e\n",tt,tfinal[tt].id,tfinal[tt].peak_index,tfinal[tt].d);
     }
+    */
 
 
     //OK, we have a problem.  Let's sort both t and tfinal by tracer ID
     //then we can search and identify what is missing.
     std::sort(t.begin(), t.end(), tracer_id_sort);
-    std::sort(tfinal.begin(),tfinal.end(),tracer_id_sort);
+    //std::sort(tfinal.begin(),tfinal.end(),tracer_id_sort);
+
+    std::sort(tkeep.begin(),tkeep.end(),tracer_id_sort);
 
     for(ss=0;ss<s.size();ss++)
     {
@@ -1902,8 +1926,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
     for(tt=0;tt<t.size()-1;tt++)
     {
-      if(t[tt].id!=tfinal[tt].id)
+      //if(t[tt].id!=tfinal[tt].id)
+      if(t[tt].id!=tkeep[tt].id)
       {
+        /*
         printf("tt-2 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-2,t[tt-2].id,t[tt-2].peak_index,tfinal[tt-2].id,tfinal[tt-2].peak_index);
         printf("tt-1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-1,t[tt-1].id,t[tt-1].peak_index,tfinal[tt-1].id,tfinal[tt-1].peak_index);
         printf("tt   %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt,t[tt].id,t[tt].peak_index,tfinal[tt].id,tfinal[tt].peak_index);
@@ -1911,7 +1937,14 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         printf("tt+2 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+2,t[tt+2].id,t[tt+2].peak_index,tfinal[tt+2].id,tfinal[tt+2].peak_index);         
         printf("tt+3 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+3,t[tt+3].id,t[tt+3].peak_index,tfinal[tt+3].id,tfinal[tt+3].peak_index);
         printf("tt+4 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+4,t[tt+4].id,t[tt+4].peak_index,tfinal[tt+4].id,tfinal[tt+4].peak_index);
-
+        */
+        printf("tt-2 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-2,t[tt-2].id,t[tt-2].peak_index,tkeep[tt-2].id,tkeep[tt-2].peak_index);
+        printf("tt-1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt-1,t[tt-1].id,t[tt-1].peak_index,tkeep[tt-1].id,tkeep[tt-1].peak_index);
+        printf("tt   %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt,t[tt].id,t[tt].peak_index,tkeep[tt].id,tkeep[tt].peak_index);
+        printf("tt+1 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+1,t[tt+1].id,t[tt+1].peak_index,tkeep[tt+1].id,tkeep[tt+1].peak_index);         
+        printf("tt+2 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+2,t[tt+2].id,t[tt+2].peak_index,tkeep[tt+2].id,tkeep[tt+2].peak_index);         
+        printf("tt+3 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+3,t[tt+3].id,t[tt+3].peak_index,tkeep[tt+3].id,tkeep[tt+3].peak_index);
+        printf("tt+4 %ld t id %ld peak_index %ld tfinal %ld peak_index %ld\n",tt+4,t[tt+4].id,t[tt+4].peak_index,tkeep[tt+4].id,tkeep[tt+4].peak_index);        
         break;
       }
 
@@ -1920,7 +1953,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
     exit(-1);
   }else{
-    printf("PASS ALL TRACERS FOUND t.size %ld tfinal.size() %ld\n",t.size(),tfinal.size());
+    //printf("PASS ALL TRACERS FOUND t.size %ld tfinal.size() %ld\n",t.size(),tfinal.size());
+    printf("PASS ALL TRACERS FOUND t.size %ld tfinal.size() %ld\n",t.size(),tkeep.size());
+
   }
 
   //destroy buffer memory
@@ -1930,7 +1965,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
   vector<tracer>().swap(tstore);
   vector<tracer>().swap(tkeep);
-  vector<tracer>().swap(tfinal);
+  //vector<tracer>().swap(tfinal);
 
   vector<shock>().swap(smerge);
   vector<shock>().swap(sappend);
