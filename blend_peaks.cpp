@@ -167,7 +167,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   long i,j;
   long nslim;
 
-  long id_check = 14339291; //debugging
+  long id_check = 56992049; //debugging
 
   vector<shock>  sappend; //new shocks to add to the list
   vector<tracer> tappend;
@@ -196,9 +196,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
 
   vector<int> interactions;
-  vector<int> n_append;
-  vector<int> n_merge;
-  vector<int> n_expand;
+  //vector<int> n_append;       //THESE ARE NEW LDT SHOCKS
+  //vector<int> n_merge;
+  //vector<int> n_expand;       //THESE ARE HDT SHOCKS WITH ADDED PARTICLES
 
   vector<tracer>::iterator it;
   vector<tracer>::iterator ia;
@@ -368,6 +368,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
       //if there are no interactions, this is a new peak
       //this is the easiest case, add shock to sappend
       //and add tracers to tappend
+
+      //For this case, there should not be any 
+      //particles in *bt that need to be added to
+      //the list
       if(interactions.size() ==0)
       {
       	//some simple checking
@@ -384,7 +388,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             printf("PRESENT B ss %ld\n",ss);
             exit(-1);
           }*/
-          if((t[s[ss].o+tt].id==id_check)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
+          if(t[s[ss].o+tt].id==id_check)
           {
   //          printf("PRESENT B ss %ld\n",ss);
             printf("PRESENT B pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
@@ -412,7 +416,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           tappend.push_back(tbuf[tt]);
 
         //printf("Added shock properties ss %ld l %10ld o %10ld d %e id %10ld\n",ss,s[ss].l,s[ss].o,s[ss].d,s[ss].id);
-        printf("Blended (A) shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+        printf("************\n");
+        printf("*** Blended (A; int==0) shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+        printf("************\n");
 
 
         //destroy tracer buffer
@@ -435,15 +441,26 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         if((interactions.size()==1)&&(s[ss].id==(*bs)[interactions[0]].id) )
         //if((interactions.size()==1)&&((s[ss].id==(*bs)[interactions[0]].id)||(s[ss].d==(*bs)[interactions[0]].d)) )
         {
+
+          //we have found one of the HDT peaks as a LDT peak that
+          //has no other interactions.  We can then just duplicate
+          //the HDT peak and expand it
+
+          //To do so, we have to add all the LDT particles from *t
+          //to the *bt particles in the HDT peak, and then 
+          //compare to find duplicates -- only keeping unique
+          //particles
+
+
           //some simple checking
       	  pcount += s[ss].l;
 
           i = interactions[0];
-          printf("EXPANDING:\n");
-          printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
-          printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
-          printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
-          printf("LDT shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+          //printf("EXPANDING:\n");
+          //printf("HDT shock box %e %e %e %e %e %e\n",(*bs)[i].min[0],(*bs)[i].min[1],(*bs)[i].min[2],(*bs)[i].max[0],(*bs)[i].max[1],(*bs)[i].max[2]);
+          //printf("LDT shock box %e %e %e %e %e %e\n",s[ss].min[0],s[ss].min[1],s[ss].min[2],s[ss].max[0],s[ss].max[1],s[ss].max[2]);
+          //printf("HDT shock properties l %10ld o %10ld d %e id %10ld\n",(*bs)[i].l,(*bs)[i].o,(*bs)[i].d,(*bs)[i].id);
+          //printf("LDT shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
 
           //add the high and low density threshold
           //shocks' tracers to a buffer
@@ -485,15 +502,23 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
           //destroy tbuf
           vector<tracer>().swap(tbuf);
-
-          printf("Blended (B) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+          printf("************\n");
+          printf("*** Blended (B, int==1) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+          printf("************\n");
 
         //}else if((interactions.size()==1)&&(s[ss].d<(*bs)[interactions[0]].d)){
         }else if(interactions.size()==1){
 
+
+#ERROR IF THE PROXIMATE INTERACTION IS a HDT WITH A LOWER DENSITY PEAK than the LDT peak, IT WILL BE SUBSUMED!
+
           //proximate shocks with different peaks
           //so we need to add ss as if interactions==0
-          //TESTING
+
+          //THESE ARE REALLY THE SAME PEAK, BLENDED TOGETHER BY LOW D LIKELY
+
+          //Nominally, this involves adding the LDT 
+          //particles from the input *t.
 
           i = interactions[0];
           printf("PROXIMATE\n");
@@ -509,6 +534,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           for(tt=0;tt<s[ss].l;tt++)
           {
             tbuf.push_back(t[s[ss].o+tt]);
+
+            if(t[s[ss].o+tt].id==(*bs)[i].id)
+            {
+              printf("HDT PEAK INDEX PRESENT IN PROXIMATE C pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
+
+            }
           }
       
           //sort tracers by density, then id
@@ -530,7 +561,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             tappend.push_back(tbuf[tt]);
 
           //printf("Added shock properties ss %ld l %10ld o %10ld d %e id %10ld\n",ss,s[ss].l,s[ss].o,s[ss].d,s[ss].id);
-          printf("Blended (C) shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+          printf("************\n");
+          printf("*** Blended (C, int=1) shock properties l %10ld o %10ld d %e id %10ld\n",s[ss].l,s[ss].o,s[ss].d,s[ss].id);
+          printf("************\n");
 
           //destroy tracer buffer
           vector<tracer>().swap(tbuf);
@@ -643,6 +676,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             //Here, we need to consider separately
             //whether the interactions are merges,
             //or if the bounding boxes have just overlapped
+
+//CASE 1 -- we find the low density peak in a high density peak
             if((it!=tbuf.end()) && !flag_multi)
             {
               //remember that we've done this multiple interaction
@@ -653,7 +688,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               //density peak.
 
 
-              printf("**INT #%d: LDT DOES    CONTAIN HDT int peak %6ld (id=%10ld) is       in ss = %10ld (id=%10ld)\n",ti,i,(*bs)[i].id,ss,s[ss].id);
+              printf("**INT #%ld: LDT DOES    CONTAIN HDT int peak %6ld (id=%10ld) is       in ss = %10ld (id=%10ld)\n",ti,i,(*bs)[i].id,ss,s[ss].id);
 
               //why not just build a separate tree buffer?
               //loop over tbuf, search the tree for nearest
@@ -960,7 +995,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   }
                 }//loop over tbuf
 
-                printf("Blended (D) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+                printf("************\n");
+                printf("*** Blended (D) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+                printf("************\n");
 
 
                 //destroy tgap and egap
@@ -1036,18 +1073,22 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                     pid = tbuf[tt+1].peak_index;
                   }
                 }//end loop over tbuf
-                printf("Blended (E) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+                printf("************\n");
+                printf("*** Blended (E) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+                printf("************\n");
+
               }
 
               //Done!
 
+//CASE 2 -- we don't find the low density peak
             }else if(it==tbuf.end()){
 
 
               //here the bounding boxes have just overlapped, and
               //the lower threshold peak does not contain the peak
               //of the higher threshold peak.
-              printf("**INT #%d: LDT DOESN'T CONTAIN HDT int peak %6ld (bs.id=%10ld) is *NOT* in ss = %10ld (s.id=%10ld (tbuf.size() %ld; bs.l %ld))\n",ti,i,(*bs)[i].id,ss,s[ss].id,tbuf.size(),(*bs)[i].l);
+              printf("**INT #%ld: LDT DOESN'T CONTAIN HDT int peak %6ld (bs.id=%10ld) is *NOT* in ss = %10ld (s.id=%10ld (tbuf.size() %ld; bs.l %ld))\n",ti,i,(*bs)[i].id,ss,s[ss].id,tbuf.size(),(*bs)[i].l);
 
               //OK, what fraction of the lower density peak
               //overlaps with the higher density peak?
@@ -1376,7 +1417,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
               flag_box_fail = 1;
               //printf("BOX FAIL %d\n",flag_box_fail);
               //exit(-1);
+              printf("************\n");
               printf("*******  Blended (F) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+              printf("************\n");
 
               //if(toverlap.size()>0)
               //  exit(-1);
@@ -1416,8 +1459,10 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             smerge.push_back(sbuf);
             for(tt=0;tt<sbuf.l;tt++) //ADDTMERGE
               tmerge.push_back(tbuf[tt]);
-            
-            printf("Blended (G) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+
+            printf("************\n");
+            printf("*** Blended (G) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+            printf("************\n");
 
           }
           
@@ -1452,6 +1497,13 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
   printf("PCOUNT %ld t.size() %ld\n",pcount,t.size());
 
+
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  //IMPORTANT BS AND BT ARE CLEARED AND REPLACED
+  //////////////////////////////////////////////////
+
+
   //vacate bs and bt
   (*bs).clear();
   bt->clear();
@@ -1465,9 +1517,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   //texpand is only interactions == 1
   //tmerge  is only interactions >  1
 
-  //problem is with 27158540, which is where the 1467809 peak splits
-  //the tcorr size without the overlap is the size of 27158540, which should
-  //be 1467809
 
   printf("SIZES of tmerge %ld tappend %ld texpand %ld\n",tmerge.size(),tappend.size(),texpand.size());
 
