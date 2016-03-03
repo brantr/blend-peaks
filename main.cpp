@@ -141,6 +141,15 @@ int main(int argc, char **argv)
       read_shock_data(fdata,s,&t);
       printf("Total number of tracers = %ld (%ld).\n",t.size(),nt);
 
+      //set peak indices
+      for(long ss=0;ss<s.size();ss++)
+      {
+        for(long tt=s[ss].o;tt<s[ss].o+s[ss].l;tt++)
+        {
+          t[tt].peak_index = s[ss].id;
+        }
+      }
+
 
       //OK, now we blend the peaks
       blend_peaks(&bs, &bt, s, t, rmax);
