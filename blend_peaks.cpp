@@ -521,6 +521,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
             idx_hdt.push_back(tt);
           }
 
+
         //build search trees
         ldt_data.resize(extents[idx_ldt.size()][3]);
         hdt_data.resize(extents[idx_hdt.size()][3]);
@@ -552,7 +553,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         long n_ldt = idx_ldt.size();
         long n_ldt_last = n_ldt;
         int n_iter = 0;
-        int n_ldt_search=2;
+        int n_ldt_search = std::min(n_ldt,(long) 2);
 
         printf("n_ldt = %ld\n", n_ldt);
 
@@ -577,7 +578,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               //if the HDT tree is closer, then
               //use it
-              if(res_hdt[0].dis<res_ldt[n_ldt_search-1].dis)
+              if(res_hdt[0].dis<res_ldt[n_ldt_search-1].dis || idx_ldt.size()==1)
               {
                 //use the HDT result peak_index
                 tbuf[idx_ldt[tt]].peak_index = tbuf[idx_hdt[res_hdt[0].idx]].peak_index;
