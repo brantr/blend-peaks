@@ -65,6 +65,10 @@ bool tracer_id_sort(tracer a, tracer b)
 {
   return (a.id<b.id);
 }
+bool tracer_idx_sort(tracer a, tracer b)
+{
+  return (a.idx<b.idx);
+}
 bool shock_id_sort(shock a, shock b)
 {
   return (a.id<b.id);
@@ -223,6 +227,15 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   kdtree2 *gap_tree;
   array2dfloat gap_tree_data;
 
+  //ldt tree
+  kdtree2 *ldt_tree;
+  kdtree2 *hdt_tree;
+  array2dfloat ldt_data;
+  array2dfloat hdt_data;
+  kdtree2_result_vector res_ldt;
+  kdtree2_result_vector res_hdt;
+
+
   vector<tracer> tgap;
   int flag_gap_tree = 0;
 
@@ -248,7 +261,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   {
   	lcheck.push_back(t[tt].id);
     if(t[tt].id==id_check)
-      printf("tt %ld id %ld\n",tt,t[tt].id);
+      printf("tt %ld id %ld d %e\n",tt,t[tt].id,t[tt].d);
   }
   std::sort(lcheck.begin(), lcheck.end());
   il = std::unique(lcheck.begin(), lcheck.end());
@@ -332,6 +345,69 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     for(ss=0;ss<bs->size();ss++)
       scomp.push_back((*bs)[ss]);
 
+
+     //remember original index
+     for(tt=0;tt<t.size();tt++)
+       t[tt].idx = tt;
+ 
+     //sort LDT particles by id
+     std::sort(t.begin(), t.end(), tracer_id_sort);
+ 
+     //check
+     //for(tt=0;tt<10;tt++)
+    //printf("t[%ld].id %ld\n",tt,t[tt].id);
+ 
+     //remember original bt index
+     for(tt=0;tt<bt->size();tt++)
+       (*bt)[tt].idx = tt;
+ 
+     //sort HDT particles by id
+     std::sort(bt->begin(),bt->end(),tracer_id_sort);
+ 
+     //check
+     //for(tt=0;tt<10;tt++)
+    //printf("bt[%ld].id %ld\n",tt,(*bt)[tt].id);
+ 
+ 
+     //synchronize LDT peak indices to match HDT peak indices
+     //note all HDT tracers are in LDT
+     ttb=0;
+     tt=0;
+     while(tt<bt->size()&&ttb<t.size())
+     {
+       if((*bt)[tt].id==t[ttb].id)
+       {
+         //printf("tt %ld bt.id %ld bt.pid %ld ttb %ld t.id %ld t.pid %ld\n",tt,(*bt)[tt].id,(*bt)[tt].peak_index,ttb,t[ttb].id,t[ttb].peak_index);
+         t[ttb].peak_index = (*bt)[tt].peak_index;
+         //this particle appeared in the HDT catalog
+         t[ttb].ldt        = 0;
+         tt++;
+       }else{
+         //this particle did not appear in the HDT catalog
+         //but was added to the LDT catalog
+         t[ttb].ldt = 1; 
+       }
+       ttb++;
+     }
+
+      //sort LDT particles by idx
+     std::sort(t.begin(),t.end(),tracer_idx_sort);
+  
+      //sort HDT particles by idx
+     std::sort(bt->begin(),bt->end(),tracer_idx_sort);
+
+     //now LDT and HDT are in their original order,
+     //and the peak_indices of the LDT particles 
+     //match the HDT peak_indices
+
+     //We now have to consider:
+     //
+     //1) New LDT peaks that did not appear in the HDT catalog
+     //2) LDT peaks that have blended multiple HDT peaks
+
+     //we can determine with LDT peaks have interacted with the
+     //HDT peaks because they will have multiple peak_indices
+ 
     //begin loop over peaks found at this density threshold
     for(ss=0;ss<s.size();ss++)
       printf("s[%4ld].l %6ld id %10ld\n",ss,s[ss].l,s[ss].id);
@@ -350,16 +426,249 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
     for(ss=0;ss<nslim;ss++)
     {
 
-      
       //reset the flag of multiple interactions
       flag_multi = 0;
 
+      //loop over particles in the LDT.  If the
+      //peak index of the tracer does not equal
+      //the peak index of the group, then there
+      //is an additional interaction
+
+      int n_interactions = 0;
+      vector<long> interaction_id; 
+      vector<long> interaction_idx; 
+
+
+      for(tt=s[ss].o;tt<s[ss].o+s[ss].l;tt++)
+      {
+        tbuf.push_back(t[tt]);
+        if(t[tt].peak_index!=s[ss].id)
+        {
+          n_interactions++;
+          interaction_id.push_back(t[tt].peak_index);
+        }
+      }
+
+      //keep only unique interactions
+      printf("n_interactions before %d\n",n_interactions);
+
+      if(n_interactions>0)
+      {
+        //HERE
+        std::sort(interaction_id.begin(), interaction_id.end());
+        il = std::unique(interaction_id.begin(), interaction_id.end());
+        interaction_id.resize( std::distance(interaction_id.begin(), il) );
+        n_interactions = interaction_id.size();
+      }
+
+      printf("n_interactions %d\n",n_interactions);
+
+      if(n_interactions==0)
+      {
+        //the shock has no other interactions, and only
+        //contains either
+        //1) HDT particles + new LDT particles of the same peak
+        //2) only LDT particles
+
+        //we can just add these to texpand and sexpand
+
+        //set peak properties
+        sbuf.l  = tbuf.size();
+        sbuf.o  = texpand.size();
+        sbuf.d  = tbuf[0].d;
+        sbuf.id = tbuf[0].id;
+
+        //append tbuf to texpand
+        it = texpand.end();
+        texpand.insert(it,tbuf.begin(),tbuf.end());
+
+        //append sbuf to sexpand
+        sexpand.push_back(sbuf);
+
+        printf("************\n");
+        printf("*** Blended (A, int==0) shock properties l %10ld o %10ld d %e id %10ld\n",sbuf.l,sbuf.o,sbuf.d,sbuf.id);
+        printf("************\n");
+
+      }else{ //n_interactions>0
+
+        //in this case the LDT peak has
+        //merged together nearby HDT peaks
+
+        //the HDT particles are fine, and
+        //do not need their peaks reassigned
+
+        //the particles that are new from the
+        //LDT catalog need to be assigned to
+        //one of the HDT peaks
+
+        //we will build search trees for the
+        //HDT and LDT particles.  We will search
+        //for the LDT particles in both the HDT
+        //and LDT trees to find the nearest HDT
+        //and new LDT particles, and iteratively
+        //bind the new LDT particles to an HDT peak
+
+        vector<int> idx_ldt;
+        vector<int> idx_hdt;
+
+        //get indices of tracers that
+        //are new ldt or old hdt catalogs 
+        for(tt=0;tt<tbuf.size();tt++)
+          if(tbuf[tt].ldt)
+          {
+            idx_ldt.push_back(tt);
+          }else{
+            idx_hdt.push_back(tt);
+          }
+
+        //build search trees
+        ldt_data.resize(extents[idx_ldt.size()][3]);
+        hdt_data.resize(extents[idx_hdt.size()][3]);
+
+        //load ldt particles into tree
+        for(tt=0;tt<idx_ldt.size();tt++)
+        {
+          for(int k=0;k<3;k++)
+            ldt_data[tt][k] = tbuf[idx_ldt[tt]].x[k];
+        }
+        //load hdt particles into tree
+        for(tt=0;tt<idx_hdt.size();tt++)
+        {
+          for(int k=0;k<3;k++)
+            hdt_data[tt][k] = tbuf[idx_hdt[tt]].x[k];
+        }
+
+        //build the trees
+        hdt_tree = new kdtree2(hdt_data, true);
+        ldt_tree = new kdtree2(ldt_data, true);
+
+
+        //now we perform iterative binding
+
+        //we loop until all of the new LDT
+        //particles are appropriately 
+        //assigned to a HDT peak
+
+        long n_ldt = idx_ldt.size();
+        long n_ldt_last = n_ldt;
+        int n_iter = 0;
+        int n_ldt_search=2;
+
+        printf("n_ldt = %ld\n", n_ldt);
+
+        while(n_ldt>0)
+        {
+          n_iter++;
+          printf("n_iter %d n_ldt %ld n_ldt_search %d\n",n_iter,n_ldt,n_ldt_search-1);
+
+          for(tt=0;tt<idx_ldt.size();tt++)
+            if(tbuf[idx_ldt[tt]].ldt)
+            {
+              //check the location of the particle
+              for(int k=0;k<3;k++)
+                xc[k] = tbuf[idx_ldt[tt]].x[k];
+
+              //find the nearest partices in the HDT
+              //and LDT trees
+              ldt_tree->n_nearest(xc,n_ldt_search,res_ldt);
+              hdt_tree->n_nearest(xc,2,res_hdt);
+
+              //printf("n_iter %d n_ldt %ld tt %ld res_ldt.dis %e res_hdt.dis %e n_ldt_search %d\n",n_iter,n_ldt,tt,res_ldt[n_ldt_search-1].dis,res_hdt[0].dis,n_ldt_search-1);
+
+              //if the HDT tree is closer, then
+              //use it
+              if(res_hdt[0].dis<res_ldt[n_ldt_search-1].dis)
+              {
+                //use the HDT result peak_index
+                tbuf[idx_ldt[tt]].peak_index = tbuf[idx_hdt[res_hdt[0].idx]].peak_index;
+                tbuf[idx_ldt[tt]].ldt = 0;
+                n_ldt--;
+              }else{
+                //use the LDT tree result if 
+                //it's already been assigned to a
+                //HDT peak
+                for(int ildt=1; ildt<n_ldt_search; ildt++)
+                {
+                  if(!tbuf[idx_ldt[res_ldt[ildt].idx]].ldt)
+                  {
+                    tbuf[idx_ldt[tt]].peak_index = tbuf[idx_ldt[res_ldt[ildt].idx]].peak_index;
+                    tbuf[idx_ldt[tt]].ldt = 0;
+                    n_ldt--;
+                    break;
+                  }
+                }
+              }
+            }
+          //  if(n_ldt_last==n_ldt)
+          //  {
+              //increase the search level
+          //    n_ldt_search++;
+          //  }
+          n_ldt_search++;
+          n_ldt_last = n_ldt;
+        }
+        printf("number of iterations = %d\n",n_iter);
+
+        //sort the tracers by peak_index, density, id
+        std::sort(tbuf.begin(),tbuf.end(),tracer_pid_and_density_and_id_sort);
+
+        //store tbuf and sbuf into tappend and sappend
+        sbuf.id = tbuf[0].peak_index;
+        sbuf.o  = tbuf[0].idx;
+        sbuf.d  = tbuf[0].d;
+        for(tt=0;tt<tbuf.size();tt++)
+        {
+          //add tbuf to tappend
+          tappend.push_back(tbuf[tt]);
+
+          if(tbuf[tt].peak_index!=sbuf.id)
+          {
+            //iterate sappend
+            sappend.push_back(sbuf);
+            sbuf.id = tbuf[tt].peak_index;
+            sbuf.o  += sbuf.l;
+            sbuf.l  = 1;
+
+          }else{
+            sbuf.l++;
+            if(tt==tbuf.size()-1)
+              sappend.push_back(sbuf);
+          }
+        }
+
+
+        //free memory
+        hdt_data.resize(extents[0][0]);
+        free(hdt_tree);
+        ldt_data.resize(extents[0][0]);
+        free(ldt_tree);
+
+        //destroy tracer buffer
+        vector<int>().swap(idx_ldt);
+        vector<int>().swap(idx_hdt);
+      }
+
+      //check that texpand + tappend == t
+      if(texpand.size()+tappend.size()==t.size())
+      {
+        printf("**PASS t.size() %ld texpand.size()+tappend.size() %ld texpand.size() %ld tappend.size() %ld\n",t.size(),texpand.size()+tappend.size(),texpand.size(),tappend.size());
+      }else{
+        printf("**FAIL t.size() %ld texpand.size()+tappend.size() %ld texpand.size() %ld tappend.size() %ld\n",t.size(),texpand.size()+tappend.size(),texpand.size(),tappend.size());
+        //exit(-1);
+      }
+
+      //destroy buffers
+      vector<long>().swap(interaction_id);
+      vector<long>().swap(interaction_idx);
+      vector<tracer>().swap(tbuf);
+/*
       //compare bounding boxes
       for(ssb=0;ssb<bs->size();ssb++)
       {
         if(box_collision(s[ss].min,s[ss].max,(*bs)[ssb].min,(*bs)[ssb].max))
           interactions.push_back(ssb);
       }
+
 
       printf("******************Shock %ld %10ld***************\n",ss,s[ss].id);
       printf("Shock = %6ld (l=%6ld; id=%10ld; d=%e), number of interactions = %ld\n",ss,s[ss].l,s[ss].id,s[ss].d,interactions.size());
@@ -383,14 +692,9 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         for(tt=0;tt<s[ss].l;tt++)
         {
           tbuf.push_back(t[s[ss].o+tt]);
-          /*if(t[s[ss].o+tt].id==5708317)
-          {
-            printf("PRESENT B ss %ld\n",ss);
-            exit(-1);
-          }*/
+
           if(t[s[ss].o+tt].id==id_check)
           {
-  //          printf("PRESENT B ss %ld\n",ss);
             printf("PRESENT B pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
 
           }
@@ -510,7 +814,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
         }else if(interactions.size()==1){
 
 
-#ERROR IF THE PROXIMATE INTERACTION IS a HDT WITH A LOWER DENSITY PEAK than the LDT peak, IT WILL BE SUBSUMED!
+//#ERROR IF THE PROXIMATE INTERACTION IS a HDT WITH A LOWER DENSITY PEAK than the LDT peak, IT WILL BE SUBSUMED!
 
           //proximate shocks with different peaks
           //so we need to add ss as if interactions==0
@@ -625,10 +929,8 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
           {
             tbuf.push_back(t[s[ss].o+tt]);
             tbuf[tt].peak_index = -1;
-//            if(t[s[ss].o+tt].id==5708317)
             if((t[s[ss].o+tt].id==id_check)||(t[s[ss].o+tt].id==22663579)||(t[s[ss].o+tt].id==43349505))
             {
-//              printf("PRESENT D ss %ld\n",ss);
               printf("PRESENT D pid %ld ss %ld s.id %ld\n",t[s[ss].o+tt].id,ss,s[ss].id);
 
               //exit(-1);
@@ -806,51 +1108,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
                 int neiter=0;
 
-                //iteratively "bind" tracers
-                //in gap to a shock
-                /*slow but works
-                while(egap.size()>0)
-                {
-                  //printf("****\n");
-
-                  neiter++;
-                  if(!(neiter%100))
-                    printf("iteration %d egap %ld\n",neiter,egap.size());
-
-                  //OK, let's continue
-                  //sort the edges by distance to peaks
-                  std::sort(egap.begin(),egap.end(),edgeg_disA_sort);
-
-                  //set the peak_index of the tracer that is closest to a peak
-                  tgap[egap[0].tt].peak_index = (*bt)[egap[0].idxA].peak_index;
-                  egap[0].pid                 = tgap[egap[0].tt].peak_index;
-
-                  //find the tracers that have this tracer as its
-                  //nearest neighbor, and assign those to this shock
-                  //as well.
-                  for(tt=0;tt<egap.size();tt++)
-                  {
-                    if(tgap[egap[tt].idxg].peak_index!=-1)
-                    { 
-                      tgap[egap[tt].tt].peak_index = tgap[egap[tt].idxg].peak_index;
-                      egap[tt].pid = tgap[egap[tt].idxg].peak_index;
-                    }
-                    //printf("tt %ld egap.tt %ld tracer id %ld d %e pid %10ld bres id %ld bres dis %e bres d %e bres pid %ld gres id %ld gres dis %e gres d %e gres pid %ld\n",tt,egap[tt].tt,tgap[egap[tt].tt].id,tgap[egap[tt].tt].d,tgap[egap[tt].tt].peak_index,(*bt)[egap[tt].idxA].id,egap[tt].disA,(*bt)[egap[tt].disA].d,(*bt)[egap[tt].disA].peak_index,tgap[egap[tt].idxg].id,egap[tt].disg,tgap[egap[tt].idxg].d,tgap[egap[tt].idxg].peak_index);
-                  }
-
-                  //let's resort and remove unassigned tracers
-                  std::sort(egap.begin(),egap.end(),edgeg_pid_sort);
-
-                  //remove tracers assigned to a peak
-                  for(tt=0;tt<egap.size();tt++)
-                    if(egap[tt].pid!=-1)
-                     break;
-
-                  //remove assigned tracers
-                  egap.erase(egap.begin()+tt,egap.end());
-                }//while(egap.size()>0)
-                */
-
                 //sort the edges by distance to peaks
                 std::sort(egap.begin(),egap.end(),edgeg_disA_sort);
 
@@ -885,18 +1142,6 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
                   ei = std::remove_if(egap.begin(),egap.end(),edgeg_pid_assigned);
                   egap.resize( std::distance(egap.begin(), ei) );
 
-                  /*
-                  //let's resort and remove unassigned tracers
-                  std::sort(egap.begin(),egap.end(),edgeg_pid_sort);
-
-                  //remove tracers assigned to a peak
-                  for(tt=0;tt<egap.size();tt++)
-                    if(egap[tt].pid!=-1)
-                     break;
-
-                  //remove assigned tracers
-                  egap.erase(egap.begin()+tt,egap.end());
-                  */
 
                 }//while(egap.size()>0)
 
@@ -1474,23 +1719,12 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
 
       }//end interactions>0
-/*
-      //check pathological case
-      if(ss<s.size()-1)
-      {
-        if(s[ss+1].d==s[ss].d && box_collision(s[ss].min,s[ss].max,s[ss+1].min,s[ss+1].max))
-        {
-          printf("PATHOLOGY ss %ld id %ld d %e ss+1 %ld id %ld d %e\n",ss,s[ss].id,s[ss].d,ss+1,s[ss+1].id,s[ss+1].d);
 
-
-
-        }
-
-      }
-*/
 
       //destroy the interaction list
       vector<int>().swap(interactions);
+*/
+
 
     }//end loop over low density threshold shocks (ss)
   } //end bs->size()>0
@@ -1657,7 +1891,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
   for(ss = 0;ss<skeep.size();ss++)
   {
     //printf("SHOCK ID LIST ss %4ld id %10ld l %6ld o %8ld d %5.4e | pid %10ld d %5.4e\n",ss,skeep[ss].id,skeep[ss].l,skeep[ss].o,skeep[ss].d,tkeep[skeep[ss].o].id,tkeep[skeep[ss].o].d);
-    printf("SHOCK ID LIST ss %4ld id %8ld l %6ld o %6ld d %5.4e | pid %10ld d %5.4e\n",ss,skeep[ss].id,skeep[ss].l,skeep[ss].o,skeep[ss].d,tkeep[skeep[ss].o].id,tkeep[skeep[ss].o].d);
+    printf("SHOCK ID LIST ss %4ld id %10ld l %6ld o %6ld d %5.4e | pid %10ld d %5.4e\n",ss,skeep[ss].id,skeep[ss].l,skeep[ss].o,skeep[ss].d,tkeep[skeep[ss].o].id,tkeep[skeep[ss].o].d);
     nctot += skeep[ss].l;
   }
   printf("TOTAL in SHOCK LIST = %ld\n",nctot);

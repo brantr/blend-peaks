@@ -21,6 +21,8 @@ struct tracer
   float x[3];
   float v[3];
   long peak_index;
+  long idx;
+  int  ldt; 
   //long peak_id;
   //long neighbor_index;
 };
