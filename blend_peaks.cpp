@@ -578,7 +578,7 @@ void blend_peaks(vector<shock> *bs, vector<tracer> *bt,vector<shock> s, vector<t
 
               //if the HDT tree is closer, then
               //use it
-              if(res_hdt[0].dis<res_ldt[n_ldt_search-1].dis || idx_ldt.size()==1)
+              if(res_hdt[0].dis<res_ldt[n_ldt_search-1].dis || n_ldt_search==idx_ldt.size())
               {
                 //use the HDT result peak_index
                 tbuf[idx_ldt[tt]].peak_index = tbuf[idx_hdt[res_hdt[0].idx]].peak_index;
